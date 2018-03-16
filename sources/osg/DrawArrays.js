@@ -1,53 +1,49 @@
-'use strict';
-var PrimitiveSet = require( 'osg/primitiveSet' );
-
+import primitiveSet from 'osg/primitiveSet';
 
 /**
  * DrawArrays manage rendering primitives
  * @class DrawArrays
  */
-var DrawArrays = function ( mode, first, count ) {
-    this._mode = mode;
-    if ( mode !== undefined ) {
-        if ( typeof ( mode ) === 'string' ) {
-            mode = PrimitiveSet[ mode ];
+var DrawArrays = function(mode, first, count) {
+    this.mode = mode;
+    if (mode !== undefined) {
+        if (typeof mode === 'string') {
+            mode = primitiveSet[mode];
         }
-        this._mode = mode;
+        this.mode = mode;
     }
-    this._first = first;
-    this._count = count;
+    this.first = first;
+    this.count = count;
 };
 
 /** @lends DrawArrays.prototype */
 DrawArrays.prototype = {
-    draw: function ( state ) {
-        if ( this._count === 0 )
-            return;
+    draw: function(state) {
+        if (this.count === 0) return;
         var gl = state.getGraphicContext();
-        gl.drawArrays( this._mode, this._first, this._count );
+        gl.drawArrays(this.mode, this.first, this.count);
     },
-    getMode: function () {
-        return this._mode;
+    getMode: function() {
+        return this.mode;
     },
-    setCount: function ( count ) {
-        this._count = count;
+    setCount: function(count) {
+        this.count = count;
     },
-    getCount: function () {
-        return this._count;
+    getCount: function() {
+        return this.count;
     },
-    setFirst: function ( first ) {
-        this._first = first;
+    setFirst: function(first) {
+        this.first = first;
     },
-    getFirst: function () {
-        return this._first;
+    getFirst: function() {
+        return this.first;
     },
-    getNumIndices: function () {
-        return this._count;
+    getNumIndices: function() {
+        return this.count;
     },
-    index: function ( i ) {
-        return this._first + i;
+    index: function(i) {
+        return this.first + i;
     }
-
 };
 
-module.exports = DrawArrays;
+export default DrawArrays;

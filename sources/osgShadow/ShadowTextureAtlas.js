@@ -1,11 +1,8 @@
-'use strict';
-var Map = require( 'osg/Map' );
-var notify = require( 'osg/notify' );
-var Texture = require( 'osg/Texture' );
-var Uniform = require( 'osg/Uniform' );
-var MACROUTILS = require( 'osg/Utils' );
-var vec4 = require( 'osg/glMatrix' ).vec4;
-
+import notify from 'osg/notify';
+import Texture from 'osg/Texture';
+import Uniform from 'osg/Uniform';
+import utils from 'osg/utils';
+import { vec4 } from 'osg/glMatrix';
 
 /**
  * ShadowTexture Attribute encapsulate Texture webgl object
@@ -15,9 +12,8 @@ var vec4 = require( 'osg/glMatrix' ).vec4;
  * @class ShadowTexture
  * @inherits StateAttribute
  */
-var ShadowTextureAtlas = function () {
-
-    Texture.call( this );
+var ShadowTextureAtlas = function() {
+    Texture.call(this);
 
     this._uniforms = {};
     this._lightNumberArray = []; // default for a valid cloneType
@@ -27,162 +23,164 @@ var ShadowTextureAtlas = function () {
     this._depthRanges = [];
     this._mapSizes = [];
     this._renderSize = vec4.create();
-
+    this._dirtyHash = true;
+    this._hash = '';
 };
 
 ShadowTextureAtlas.uniforms = {};
 /** @lends Texture.prototype */
-ShadowTextureAtlas.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( Texture.prototype, {
 
-    cloneType: function () {
-        return new ShadowTextureAtlas();
-    },
+utils.createPrototypeStateAttribute(
+    ShadowTextureAtlas,
+    utils.objectInherit(Texture.prototype, {
+        cloneType: function() {
+            return new ShadowTextureAtlas();
+        },
 
-    gettLightNumberArray: function () {
-        return this._lightNumberArray;
-    },
+        getLightNumberArray: function() {
+            return this._lightNumberArray;
+        },
 
-    hasLightNumber: function ( lightNum ) {
-        return this._lightNumberArray.indexOf( lightNum ) !== -1;
-    },
+        hasLightNumber: function(lightNum) {
+            return this._lightNumberArray.indexOf(lightNum) !== -1;
+        },
 
-    setLightNumberArray: function ( lightNumberArray ) {
+        setLightNumberArray: function(lightNumberArray) {
+            this._lightNumberArray = lightNumberArray;
+            this._dirtyHash = true;
+        },
 
-        this._lightNumberArray = lightNumberArray;
+        getUniformName: function(lightNumber, name) {
+            var prefix = 'Shadow_' + this.getType() + lightNumber.toString();
+            return 'u' + prefix + '_' + name;
+        },
 
-        var l = lightNumberArray.length;
-        this._viewMatrices.length = l;
-        this._projectionMatrices.length = l;
-        this._depthRanges.length = l;
-        this._mapSizes.length = l;
+        setInternalFormatType: function(value) {
+            Texture.prototype.setInternalFormatType.call(this, value);
+            this._dirtyHash = true;
+        },
 
-    },
+        createUniforms: function(lightNumber, uniforms) {
+            uniforms['ViewMatrix_' + lightNumber] = Uniform.createMat4(
+                this.getUniformName(lightNumber, 'viewMatrix')
+            );
+            uniforms['ProjectionMatrix_' + lightNumber] = Uniform.createMat4(
+                this.getUniformName(lightNumber, 'projectionMatrix')
+            );
+            uniforms['DepthRange_' + lightNumber] = Uniform.createFloat4(
+                this.getUniformName(lightNumber, 'depthRange')
+            );
+            uniforms['MapSize_' + lightNumber] = Uniform.createFloat4(
+                this.getUniformName(lightNumber, 'mapSize')
+            );
+            uniforms['RenderSize_' + lightNumber] = uniforms['RenderSize'];
+        },
 
-    getUniformName: function ( lightNumber, name ) {
+        getOrCreateUniforms: function(unit) {
+            // uniform are once per CLASS attribute, not per instance
+            var obj = ShadowTextureAtlas;
+            notify.assert(unit !== undefined || this._lightNumberArray.length !== 0);
 
-        var prefix = 'Shadow_' + this.getType() + lightNumber.toString();
-        return 'u' + prefix + '_' + name;
+            if (obj.uniforms[unit] !== undefined) {
+                return obj.uniforms[unit];
+            }
 
-    },
+            var uniforms = (obj.uniforms[unit] = {});
 
-    getVaryingName: function ( lightNumber, name ) {
+            // shadowmap texture size used for texel space which is viewport independant
+            var renderSizeUniform = Uniform.createFloat4(this.getUniformName(0, 'renderSize'));
+            uniforms['RenderSize'] = renderSizeUniform;
 
-        var prefix = this.getType() + lightNumber.toString();
-        return 'v' + prefix + '_' + name;
+            for (var i = 0, l = this._lightNumberArray.length; i < l; i++) {
+                this.createUniforms(this._lightNumberArray[i], uniforms);
+            }
 
-    },
+            // Dual Uniform of texture, needs:
+            // - Sampler (type of texture)
+            // - Int (texture unit)
+            // tells Shader Program where to find it
+            var name = 'Texture' + unit;
+            var uniform = Uniform.createInt1(unit, name);
+            uniforms[name] = uniform;
 
-    getOrCreateUniforms: function ( unit ) {
+            return obj.uniforms[unit];
+        },
 
-        // uniform are once per CLASS attribute, not per instance
-        var obj = ShadowTextureAtlas;
-        notify.assert( unit !== undefined || this._lightNumberArray.length !== 0 );
+        setViewMatrix: function(lightNumber, viewMatrix) {
+            this._viewMatrices[lightNumber] = viewMatrix;
+        },
 
-        if ( obj.uniforms[ unit ] !== undefined ) {
-            return obj.uniforms[ unit ];
+        setProjectionMatrix: function(lightNumber, projectionMatrix) {
+            this._projectionMatrices[lightNumber] = projectionMatrix;
+        },
+
+        setDepthRange: function(lighNumber, depthRange) {
+            this._depthRanges[lighNumber] = depthRange;
+        },
+
+        setLightShadowMapSize: function(lightNumber, dimension) {
+            this._mapSizes[lightNumber] = dimension;
+        },
+
+        apply: function(state, texUnit) {
+            // Texture stuff: call parent class method
+            Texture.prototype.apply.call(this, state, texUnit);
+
+            if (this._lightNumberArray.length === 0) {
+                return;
+            }
+
+            // update Uniforms
+            var uniformMap = this.getOrCreateUniforms(texUnit);
+
+            for (var i = 0, l = this._lightNumberArray.length; i < l; i++) {
+                var lightNumber = this._lightNumberArray[i];
+
+                if (!uniformMap['ViewMatrix_' + lightNumber]) {
+                    // enable disable uniforms and yet using getOrCreate
+                    this.createUniforms(lightNumber, uniformMap);
+                }
+
+                uniformMap['ViewMatrix_' + lightNumber].setMatrix4(this._viewMatrices[lightNumber]);
+                uniformMap['ProjectionMatrix_' + lightNumber].setMatrix4(
+                    this._projectionMatrices[lightNumber]
+                );
+                uniformMap['DepthRange_' + lightNumber].setFloat4(this._depthRanges[lightNumber]);
+                uniformMap['MapSize_' + lightNumber].setFloat4(this._mapSizes[lightNumber]);
+                uniformMap['RenderSize_' + lightNumber].setFloat4(this._renderSize);
+            }
+
+            uniformMap['RenderSize'].setFloat4(this._renderSize);
+        },
+
+        setTextureSize: function(w, h) {
+            this._renderSize[0] = w;
+            this._renderSize[1] = h;
+            this._renderSize[2] = 1.0 / w;
+            this._renderSize[3] = 1.0 / h;
+            Texture.prototype.setTextureSize.call(this, w, h);
+            this.dirty();
+        },
+
+        _computeInternalHash: function() {
+            var hash = this.getTypeMember();
+            for (var i = 0, l = this._lightNumberArray.length; i < l; i++) {
+                hash += '_' + this._lightNumberArray[i];
+            }
+            hash += '_' + this._type;
+            return hash;
+        },
+
+        getHash: function() {
+            if (!this._dirtyHash) return this._hash;
+
+            this._hash = this._computeInternalHash();
+            this._dirtyHash = false;
+            return this._hash;
         }
+    }),
+    'osgShadow',
+    'ShadowTextureAtlas'
+);
 
-        var uniforms = {};
-
-
-        // shadowmap texture size used for texel space which is viewport independant
-        var renderSizeUniform = Uniform.createFloat4( this.getUniformName( 0, 'renderSize' ) );
-        uniforms[ 'RenderSize' ] = renderSizeUniform;
-
-        for ( var i = 0, l = this._lightNumberArray.length; i < l; i++ ) {
-
-            var lightNumber = this._lightNumberArray[ i ];
-            uniforms[ 'ViewMatrix_' + lightNumber ] = Uniform.createMat4( this.getUniformName( lightNumber, 'viewMatrix' ) );
-            uniforms[ 'ProjectionMatrix_' + lightNumber ] = Uniform.createMat4( this.getUniformName( lightNumber, 'projectionMatrix' ) );
-            uniforms[ 'DepthRange_' + lightNumber ] = Uniform.createFloat4( this.getUniformName( lightNumber, 'depthRange' ) );
-            uniforms[ 'MapSize_' + lightNumber ] = Uniform.createFloat4( this.getUniformName( lightNumber, 'mapSize' ) );
-            uniforms[ 'RenderSize_' + lightNumber ] = renderSizeUniform;
-
-        }
-
-
-        // Dual Uniform of texture, needs:
-        // - Sampler (type of texture)
-        // - Int (texture unit)
-        // tells Shader Program where to find it
-        var name = 'Texture' + unit;
-        var uniform = Uniform.createInt1( unit, name );
-        uniforms[ name ] = uniform;
-
-        // Per Class Uniform Cache
-        obj.uniforms[ unit ] = new Map( uniforms );
-
-        return obj.uniforms[ unit ];
-    },
-
-    setViewMatrix: function ( lighNumberArrayIndex, viewMatrix ) {
-        this._viewMatrices[ lighNumberArrayIndex ] = viewMatrix;
-    },
-
-    setProjectionMatrix: function ( lighNumberArrayIndex, projectionMatrix ) {
-        this._projectionMatrices[ lighNumberArrayIndex ] = projectionMatrix;
-    },
-
-    setDepthRange: function ( lighNumberArrayIndex, depthRange ) {
-        this._depthRanges[ lighNumberArrayIndex ] = depthRange;
-    },
-
-    setTextureSize: function ( w, h ) {
-
-        this._renderSize[ 0 ] = w;
-        this._renderSize[ 1 ] = h;
-        this._renderSize[ 2 ] = 1.0 / w;
-        this._renderSize[ 3 ] = 1.0 / h;
-        Texture.prototype.setTextureSize.call( this, w, h );
-        this.dirty();
-
-    },
-
-    setLightShadowMapSize: function ( lighNumberArrayIndex, dimension ) {
-
-        this._mapSizes[ lighNumberArrayIndex ] = dimension;
-
-    },
-
-    apply: function ( state, texUnit ) {
-
-        // Texture stuff: call parent class method
-        Texture.prototype.apply.call( this, state, texUnit );
-
-        if ( this._lightNumberArray.length === 0 )
-            return;
-
-        // update Uniforms
-        var uniformMap = this.getOrCreateUniforms( texUnit );
-
-        for ( var i = 0, l = this._lightNumberArray.length; i < l; i++ ) {
-
-            var lightNumber = this._lightNumberArray[ i ];
-            uniformMap[ 'ViewMatrix_' + lightNumber ].setMatrix4( this._viewMatrices[ i ] );
-            uniformMap[ 'ProjectionMatrix_' + lightNumber ].setMatrix4( this._projectionMatrices[ i ] );
-            uniformMap[ 'DepthRange_' + lightNumber ].setFloat4( this._depthRanges[ i ] );
-            uniformMap[ 'MapSize_' + lightNumber ].setFloat4( this._mapSizes[ i ] );
-            uniformMap[ 'RenderSize_' + lightNumber ].setFloat4( this._renderSize );
-
-        }
-
-        uniformMap[ 'RenderSize' ].setFloat4( this._renderSize );
-
-    },
-
-    getHash: function () {
-
-        var hash = this.getTypeMember();
-        for ( var i = 0, l = this._lightNumberArray.length; i < l; i++ ) {
-            hash += '_' + this._lightNumberArray[ i ];
-        }
-        hash += '_' + this._type;
-        return hash;
-
-    }
-
-} ), 'osgShadow', 'ShadowTextureAtlas' );
-
-MACROUTILS.setTypeID( ShadowTextureAtlas );
-
-module.exports = ShadowTextureAtlas;
+export default ShadowTextureAtlas;

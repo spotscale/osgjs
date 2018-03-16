@@ -42,14 +42,18 @@ Compile:
 
 Compile whenever watched files change:
 
-    webpack -w
+    grunt watch
 
 The built version of osgjs will be put in the `build/` subdirectory.
 
 Running the examples
 --------------------
 
-Simply type in the command-line:
+Download the osgjs-data submodule repository. It will be added to the examples/media folder:
+
+    grunt sync
+
+Then simply type in the command-line:
 
     grunt serve
 
@@ -62,7 +66,7 @@ Launch:
 
     grunt test
 
-OpenSceneGraph osgjs plugin
-----------------------------
+Convert file to osgjs
+---------------------
 
-There is a plugin on my openscengraph branch https://github.com/cedricpinson/osg. This plugin will help you to export data from osg to osgjs. More instructions are available on the [wiki](https://github.com/cedricpinson/osgjs/wiki/Convert-model-with-OSG)
+You can easily convert 3D file with osgconv tool. To do that you can get the docker image here https://hub.docker.com/r/trigrou/osg/ and use it to convert a 3d file into osgjs file format. There is more infos on [wiki](https://github.com/cedricpinson/osgjs/wiki/Convert-model-with-OSG)

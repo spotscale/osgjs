@@ -1,45 +1,43 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var Object = require( 'osg/Object' );
-var mat4 = require( 'osg/glMatrix' ).mat4;
-var vec3 = require( 'osg/glMatrix' ).vec3;
-var Target = require( 'osgAnimation/target' );
+import utils from 'osg/utils';
+import Object from 'osg/Object';
+import { mat4 } from 'osg/glMatrix';
+import { vec3 } from 'osg/glMatrix';
+import Target from 'osgAnimation/target';
 
-
-var StackedScale = function ( name, scale ) {
-    Object.call( this );
-    this._target = Target.createVec3Target( scale || vec3.ONE );
-    if ( name ) this.setName( name );
+var StackedScale = function(name, scale) {
+    Object.call(this);
+    this._target = Target.createVec3Target(scale || vec3.ONE);
+    if (name) this.setName(name);
 };
 
+utils.createPrototypeObject(
+    StackedScale,
+    utils.objectInherit(Object.prototype, {
+        init: function(scale) {
+            this.setScale(scale);
+            vec3.copy(this._target.defaultValue, scale);
+        },
 
-StackedScale.prototype = MACROUTILS.objectInherit( Object.prototype, {
+        setScale: function(scale) {
+            vec3.copy(this._target.value, scale);
+        },
 
-    init: function ( scale ) {
-        this.setScale( scale );
-        vec3.copy( this._target.defaultValue, scale );
-    },
+        getTarget: function() {
+            return this._target;
+        },
 
-    setScale: function ( scale ) {
-        vec3.copy( this._target.value, scale );
-    },
+        resetToDefaultValue: function() {
+            this.setScale(this._target.defaultValue);
+        },
 
-    getTarget: function () {
-        return this._target;
-    },
+        // must be optimized
+        applyToMatrix: function(m) {
+            var scale = this._target.value;
+            mat4.scale(m, m, scale);
+        }
+    }),
+    'osgAnimation',
+    'StackedScale'
+);
 
-    resetToDefaultValue: function () {
-        this.setScale( this._target.defaultValue );
-    },
-
-    // must be optimized
-    applyToMatrix: function ( m ) {
-
-        var scale = this._target.value;
-        mat4.scale( m, m, scale );
-
-    }
-
-} );
-
-module.exports = StackedScale;
+export default StackedScale;

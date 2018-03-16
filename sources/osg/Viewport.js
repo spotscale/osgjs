@@ -1,11 +1,10 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var StateAttribute = require( 'osg/StateAttribute' );
-var mat4 = require( 'osg/glMatrix' ).mat4;
-var vec3 = require( 'osg/glMatrix' ).vec3;
+import utils from 'osg/utils';
+import StateAttribute from 'osg/StateAttribute';
+import { mat4 } from 'osg/glMatrix';
+import { vec3 } from 'osg/glMatrix';
 
-var Viewport = function ( x, y, w, h ) {
-    StateAttribute.call( this );
+var Viewport = function(x, y, w, h) {
+    StateAttribute.call(this);
 
     this._x = x !== undefined ? x : 0;
     this._y = y !== undefined ? y : 0;
@@ -13,58 +12,62 @@ var Viewport = function ( x, y, w, h ) {
     this._height = h !== undefined ? h : 600;
 };
 
-Viewport.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( StateAttribute.prototype, {
+utils.createPrototypeStateAttribute(
+    Viewport,
+    utils.objectInherit(StateAttribute.prototype, {
+        attributeType: 'Viewport',
 
-    attributeType: 'Viewport',
+        cloneType: function() {
+            return new Viewport();
+        },
 
-    cloneType: function () {
-        return new Viewport();
-    },
+        setViewport: function(x, y, width, height) {
+            this._x = x;
+            this._y = y;
+            this._width = width;
+            this._height = height;
+        },
 
-    apply: function ( state ) {
-        var gl = state.getGraphicContext();
-        gl.viewport( this._x, this._y, this._width, this._height );
-    },
+        x: function() {
+            return this._x;
+        },
 
-    setViewport: function ( x, y, width, height ) {
-        this._x = x;
-        this._y = y;
-        this._width = width;
-        this._height = height;
-    },
+        y: function() {
+            return this._y;
+        },
 
-    x: function () {
-        return this._x;
-    },
+        width: function() {
+            return this._width;
+        },
 
-    y: function () {
-        return this._y;
-    },
+        height: function() {
+            return this._height;
+        },
 
-    width: function () {
-        return this._width;
-    },
+        computeWindowMatrix: (function() {
+            var translate = mat4.create();
+            var scale = mat4.create();
+            var tmpVec = vec3.create();
 
-    height: function () {
-        return this._height;
-    },
+            return function(destination) {
+                // res = Matrix offset * Matrix scale * Matrix translate
+                mat4.fromTranslation(translate, vec3.ONE);
+                mat4.fromScaling(scale, [0.5 * this._width, 0.5 * this._height, 0.5]);
+                var offset = mat4.fromTranslation(
+                    destination,
+                    vec3.set(tmpVec, this._x, this._y, 0.0)
+                );
 
-    computeWindowMatrix: ( function () {
-        var translate = mat4.create();
-        var scale = mat4.create();
-        var tmpVec = vec3.create();
+                return mat4.mul(offset, offset, mat4.mul(scale, scale, translate));
+            };
+        })(),
 
-        return function ( destination ) {
-            // res = Matrix offset * Matrix scale * Matrix translate
-            mat4.fromTranslation( translate, vec3.ONE );
-            mat4.fromScaling( scale, [ 0.5 * this._width, 0.5 * this._height, 0.5 ] );
-            var offset = mat4.fromTranslation( destination, vec3.set( tmpVec, this._x, this._y, 0.0 ) );
+        apply: function(state) {
+            state.applyViewport(this);
+        }
+    }),
+    'osg',
+    'Viewport'
+);
 
-            return mat4.mul( offset, offset, mat4.mul( scale, scale, translate ) );
-
-        };
-    } )()
-
-} ), 'osg', 'Viewport' );
-
-module.exports = Viewport;
+export default Viewport;

@@ -1,97 +1,94 @@
-'use strict';
-var vec3 = require( 'osg/glMatrix' ).vec3;
-var mat4 = require( 'osg/glMatrix' ).mat4;
-var TriangleSphereIntersector = require( 'osgUtil/TriangleSphereIntersector' );
+import utils from 'osg/utils';
+import { vec3 } from 'osg/glMatrix';
+import { mat4 } from 'osg/glMatrix';
+import Intersector from 'osgUtil/Intersector';
+import SphereIntersectFunctor from 'osgUtil/SphereIntersectFunctor';
 
+var SphereIntersector = function() {
+    Intersector.call(this);
 
-var SphereIntersector = function () {
     this._center = vec3.create();
     this._iCenter = vec3.create();
     this._radius = 1.0;
     this._iRadius = 1.0;
-    this._intersections = [];
 };
 
-SphereIntersector.prototype = {
-    set: function ( center, radius ) {
-        // we copy iCenter and iRadius in case setCurrentTransformation is never called
-        vec3.copy( this._center, center );
-        vec3.copy( this._iCenter, center );
-        this._radius = this._iRadius = radius;
-        this.reset();
-    },
-    setCenter: function ( center ) {
-        vec3.copy( this._center, center );
-        vec3.copy( this._iCenter, center );
-    },
-    setRadius: function ( radius ) {
-        this._radius = this._iRadius = radius;
-    },
-    reset: function () {
-        // Clear the intersections vector
-        this._intersections.length = 0;
-    },
-    enter: function ( node ) {
-        // Not working if culling disabled ??
-        return !node.isCullingActive() || this.intersects( node.getBound() );
-    },
-    // Intersection Sphere/Sphere
-    intersects: function ( bsphere ) {
-        if ( !bsphere.valid() ) return false;
-        var r = this._iRadius + bsphere.radius();
-        return vec3.sqrDist( bsphere.center(), this._iCenter ) <= r * r;
-    },
+utils.createPrototypeObject(
+    SphereIntersector,
+    utils.objectInherit(Intersector.prototype, {
+        set: function(center, radius) {
+            // we copy iCenter and iRadius in case setCurrentTransformation is never called
+            vec3.copy(this._center, center);
+            vec3.copy(this._iCenter, center);
+            this._radius = this._iRadius = radius;
+            this.reset();
+        },
 
-    intersect: ( function () {
+        setCenter: function(center) {
+            vec3.copy(this._center, center);
+            vec3.copy(this._iCenter, center);
+        },
 
-        var ti = new TriangleSphereIntersector();
+        setRadius: function(radius) {
+            this._radius = this._iRadius = radius;
+        },
 
-        return function ( iv, node ) {
+        intersectNode: function(node) {
+            // TODO implement intersectBoundingBox?
+            return this.intersectBoundingSphere(node.getBoundingSphere());
+        },
 
-            var kdtree = node.getShape();
-            if ( kdtree )
-                return kdtree.intersectSphere( this._iCenter, this._iRadius, this._intersections, iv.nodePath );
+        intersectBoundingSphere: function(bsphere) {
+            if (!bsphere.valid()) return false;
+            var r = this._iRadius + bsphere.radius();
+            return vec3.sqrDist(bsphere.center(), this._iCenter) <= r * r;
+        },
 
-            ti.reset();
-            ti.setNodePath( iv.nodePath );
-            ti.set( this._iCenter, this._iRadius );
+        intersect: (function() {
+            var functor = new SphereIntersectFunctor();
 
-            // handle rig transformed vertices
-            if ( node.computeTransformedVertices ) {
-                var vList = node.getVertexAttributeList();
-                var originVerts = vList.Vertex.getElements();
+            return function(iv, node) {
+                functor.setGeometry(node);
+                functor.setIntersectionVisitor(iv);
+                functor.setIntersector(this);
 
-                // temporarily hook vertex buffer for the tri intersections
-                // don't call setElements as it dirty some stuffs because of gl buffer
-                vList.Vertex._elements = node.computeTransformedVertices();
-                ti.apply( node );
-                vList.Vertex._elements = originVerts;
-            } else {
-                ti.apply( node );
-            }
+                functor.set(this._iCenter, this._iRadius);
 
-            var l = ti._intersections.length;
-            for ( var i = 0; i < l; i++ ) {
-                this._intersections.push( ti._intersections[ i ] );
-            }
+                var kdtree = node.getShape();
+                if (kdtree) {
+                    kdtree.intersect(functor, kdtree.getNodes()[0]);
+                } else {
+                    // handle rig transformed vertices
+                    if (node.computeTransformedVertices) {
+                        functor.setVertices(node.computeTransformedVertices());
+                    }
 
-            return l > 0;
-        };
-    } )(),
+                    functor.apply(node);
+                }
 
-    getIntersections: function () {
-        return this._intersections;
-    },
+                functor.reset();
+            };
+        })(),
 
-    setCurrentTransformation: ( function () {
-        var tmp = vec3.create();
+        setCurrentTransformation: (function() {
+            var tmp = vec3.create();
 
-        return function ( matrix ) {
-            mat4.invert( matrix, matrix );
-            vec3.transformMat4( this._iCenter, this._center, matrix );
-            this._iRadius = this._radius * mat4.getScale( tmp, matrix )[ 0 ];
-        };
-    } )()
-};
+            return function(matrix) {
+                mat4.invert(matrix, matrix);
+                vec3.transformMat4(this._iCenter, this._center, matrix);
+                // Only handling analitically uniform scales.
+                // For non uniform we use an approximation to avoid complexity
+                mat4.getScale(tmp, matrix);
+                var x = tmp[0];
+                var y = tmp[1];
+                var z = tmp[2];
+                var maxScale = x > y ? (x > z ? x : z) : y > z ? y : z;
+                this._iRadius = this._radius * maxScale;
+            };
+        })()
+    }),
+    'osgUtil',
+    'SphereIntersector'
+);
 
-module.exports = SphereIntersector;
+export default SphereIntersector;

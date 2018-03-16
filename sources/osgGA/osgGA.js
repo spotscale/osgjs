@@ -1,67 +1,62 @@
-'use strict';
-var Hammer = require( 'hammer' );
-var CADManipulator = require( 'osgGA/CADManipulator' );
-var CADManipulatorStandardMouseKeyboardController = require( 'osgGA/CADManipulatorStandardMouseKeyboardController' );
-var CADManipulatorHammerController = require( 'osgGA/CADManipulatorHammerController' );
-var FirstPersonManipulator = require( 'osgGA/FirstPersonManipulator' );
-var FirstPersonManipulatorDeviceOrientationController = require( 'osgGA/FirstPersonManipulatorDeviceOrientationController' );
-var FirstPersonManipulatorHammerController = require( 'osgGA/FirstPersonManipulatorHammerController' );
-var FirstPersonManipulatorStandardMouseKeyboardController = require( 'osgGA/FirstPersonManipulatorStandardMouseKeyboardController' );
-var FirstPersonManipulatorWebVRController = require( 'osgGA/FirstPersonManipulatorWebVRController' );
-var Manipulator = require( 'osgGA/Manipulator' );
-var OrbitManipulator = require( 'osgGA/OrbitManipulator' );
-var OrbitManipulatorDeviceOrientationController = require( 'osgGA/OrbitManipulatorDeviceOrientationController' );
-var OrbitManipulatorGamePadController = require( 'osgGA/OrbitManipulatorGamePadController' );
-var OrbitManipulatorHammerController = require( 'osgGA/OrbitManipulatorHammerController' );
-var OrbitManipulatorLeapMotionController = require( 'osgGA/OrbitManipulatorLeapMotionController' );
-var OrbitManipulatorStandardMouseKeyboardController = require( 'osgGA/OrbitManipulatorStandardMouseKeyboardController' );
-var OrbitManipulatorWebVRController = require( 'osgGA/OrbitManipulatorWebVRController' );
-var SwitchManipulator = require( 'osgGA/SwitchManipulator' );
-var OrbitManipulatorEnums = require( 'osgGA/orbitManipulatorEnums' );
-
+import Hammer from 'hammer';
+import CADManipulator from 'osgGA/CADManipulator';
+import CADManipulatorStandardMouseKeyboardController from 'osgGA/CADManipulatorStandardMouseKeyboardController';
+import CADManipulatorHammerController from 'osgGA/CADManipulatorHammerController';
+import FirstPersonManipulator from 'osgGA/FirstPersonManipulator';
+import FirstPersonManipulatorDeviceOrientationController from 'osgGA/FirstPersonManipulatorDeviceOrientationController';
+import FirstPersonManipulatorHammerController from 'osgGA/FirstPersonManipulatorHammerController';
+import FirstPersonManipulatorStandardMouseKeyboardController from 'osgGA/FirstPersonManipulatorStandardMouseKeyboardController';
+import FirstPersonManipulatorWebVRController from 'osgGA/FirstPersonManipulatorWebVRController';
+import Manipulator from 'osgGA/Manipulator';
+import OrbitManipulator from 'osgGA/OrbitManipulator';
+import OrbitManipulatorDeviceOrientationController from 'osgGA/OrbitManipulatorDeviceOrientationController';
+import OrbitManipulatorGamePadController from 'osgGA/OrbitManipulatorGamePadController';
+import OrbitManipulatorHammerController from 'osgGA/OrbitManipulatorHammerController';
+import OrbitManipulatorStandardMouseKeyboardController from 'osgGA/OrbitManipulatorStandardMouseKeyboardController';
+import OrbitManipulatorWebVRController from 'osgGA/OrbitManipulatorWebVRController';
+import SwitchManipulator from 'osgGA/SwitchManipulator';
+import OrbitManipulatorEnums from 'osgGA/orbitManipulatorEnums';
+import Controller from 'osgGA/Controller';
 
 var osgGA = {};
 
 Hammer.NO_MOUSEEVENTS = true; // disable hammer js mouse events
 
 osgGA.CADManipulator = CADManipulator;
-osgGA.getCADManipulatorStandardMouseKeyboardController = function () {
+osgGA.getCADManipulatorStandardMouseKeyboardController = function() {
     return CADManipulatorStandardMouseKeyboardController;
 };
-osgGA.getCADManipulatorHammerController = function () {
+osgGA.getCADManipulatorHammerController = function() {
     return CADManipulatorHammerController;
 };
 osgGA.FirstPersonManipulator = FirstPersonManipulator;
-osgGA.getFirstPersonDeviceOrientationController = function () {
+osgGA.getFirstPersonDeviceOrientationController = function() {
     return FirstPersonManipulatorDeviceOrientationController;
 };
-osgGA.getFirstPersonManipulatorHammerController = function () {
+osgGA.getFirstPersonManipulatorHammerController = function() {
     return FirstPersonManipulatorHammerController;
 };
-osgGA.getFirstPersonStandardMouseKeyboardControllerClass = function () {
+osgGA.getFirstPersonStandardMouseKeyboardControllerClass = function() {
     return FirstPersonManipulatorStandardMouseKeyboardController;
 };
-osgGA.getFirstPersonWebVRControllerClass = function () {
+osgGA.getFirstPersonWebVRControllerClass = function() {
     return FirstPersonManipulatorWebVRController;
 };
 osgGA.Manipulator = Manipulator;
 osgGA.OrbitManipulator = OrbitManipulator;
-osgGA.getOrbitManipulatorDeviceOrientationController = function () {
+osgGA.getOrbitManipulatorDeviceOrientationController = function() {
     return OrbitManipulatorDeviceOrientationController;
 };
-osgGA.getOrbitManipulatorGamePadController = function () {
+osgGA.getOrbitManipulatorGamePadController = function() {
     return OrbitManipulatorGamePadController;
 };
-osgGA.getOrbitManipulatorHammerController = function () {
+osgGA.getOrbitManipulatorHammerController = function() {
     return OrbitManipulatorHammerController;
 };
-osgGA.getOrbitManipulatorLeapMotionController = function () {
-    return OrbitManipulatorLeapMotionController;
-};
-osgGA.getOrbitManipulatorStandardMouseKeyboardController = function () {
+osgGA.getOrbitManipulatorStandardMouseKeyboardController = function() {
     return OrbitManipulatorStandardMouseKeyboardController;
 };
-osgGA.getOrbitManipulatorWebVRController = function () {
+osgGA.getOrbitManipulatorWebVRController = function() {
     return OrbitManipulatorWebVRController;
 };
 
@@ -71,4 +66,6 @@ osgGA.OrbitManipulator.Rotate = OrbitManipulatorEnums.ROTATE;
 osgGA.OrbitManipulator.Pan = OrbitManipulatorEnums.PAN;
 osgGA.OrbitManipulator.Zoom = OrbitManipulatorEnums.ZOOM;
 
-module.exports = osgGA;
+osgGA.Controller = Controller;
+
+export default osgGA;

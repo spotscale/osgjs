@@ -1,6 +1,4 @@
-'use strict';
 var defaultOptions = {
-
     // prefix to built url to load resource
     prefixURL: '',
 
@@ -27,4 +25,4 @@ var defaultOptions = {
     imageCrossOrigin: undefined // use callback when loading an image
 };
 
-module.exports = defaultOptions;
+export default defaultOptions;

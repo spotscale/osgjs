@@ -1,17 +1,11 @@
-'use strict';
-var ShaderGenerator = require( 'osgShader/ShaderGenerator' );
-var ShadowCompiler = require( 'osgShadow/ShadowCastCompiler' );
+import ShaderGenerator from 'osgShader/ShaderGenerator';
+import ShadowCompiler from 'osgShadow/ShadowCastCompiler';
 
-var ShaderGeneratorShadowCast = function () {
-
-    ShaderGenerator.apply( this, arguments );
-    this.setShaderCompiler( ShadowCompiler );
-    // only one attribute makes change to the compilation
-    // ignore all others
-    this._acceptAttributeTypes = new window.Set( [ 'ShadowCast', 'Skinning', 'Morph', 'PointSize' ] );
-
+var ShaderGeneratorShadowCast = function() {
+    ShaderGenerator.apply(this, arguments);
+    this.setShaderCompiler(ShadowCompiler);
 };
 
 ShaderGeneratorShadowCast.prototype = ShaderGenerator.prototype;
 
-module.exports = ShaderGeneratorShadowCast;
+export default ShaderGeneratorShadowCast;

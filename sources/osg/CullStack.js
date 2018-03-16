@@ -1,388 +1,386 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var BoundingSphere = require( 'osg/BoundingSphere' );
-var Camera = require( 'osg/Camera' );
-var ComputeMatrixFromNodePath = require( 'osg/computeMatrixFromNodePath' );
-var CullSettings = require( 'osg/CullSettings' );
-var CullingSet = require( 'osg/CullingSet' );
-var mat4 = require( 'osg/glMatrix' ).mat4;
-var Plane = require( 'osg/Plane' );
-var MatrixMemoryPool = require( 'osg/MatrixMemoryPool' );
-var Transform = require( 'osg/Transform' );
-var TransformEnums = require( 'osg/transformEnums' );
-var vec3 = require( 'osg/glMatrix' ).vec3;
+import utils from 'osg/utils';
+import BoundingSphere from 'osg/BoundingSphere';
+import Camera from 'osg/Camera';
+import ComputeMatrixFromNodePath from 'osg/computeMatrixFromNodePath';
+import CullSettings from 'osg/CullSettings';
+import CullingSet from 'osg/CullingSet';
+import { mat4 } from 'osg/glMatrix';
+import Plane from 'osg/Plane';
+import Transform from 'osg/Transform';
+import TransformEnums from 'osg/transformEnums';
+import { vec3 } from 'osg/glMatrix';
+import PooledArray from 'osg/PooledArray';
+import PooledResource from 'osg/PooledResource';
+import PooledMap from 'osg/PooledMap';
 
-var CullStack = function () {
+var createCullingSet = function() {
+    return new CullingSet();
+};
 
-    this._modelViewMatrixStack = [];
-    this._projectionMatrixStack = [];
-    this._viewportStack = [];
-    this._cullingSetStack = [];
+var CullStack = function() {
+    this._modelViewMatrixStack = new PooledArray();
+    this._projectionMatrixStack = new PooledArray();
+    this._viewportStack = new PooledArray();
+    this._cullingSetStack = new PooledArray();
     this._frustumVolume = -1.0;
     this._bbCornerFar = 0;
     this._bbCornerNear = 0;
 
     // keep a matrix in memory to avoid to create matrix
-    this._reservedMatrixStack = new MatrixMemoryPool();
+    this._pooledMatrix = new PooledResource(mat4.create);
 
-    this._reserveCullingSetStack = [
-        new CullingSet()
-    ];
-    this._reserveCullingSetStack.current = 0;
-
+    this._pooledCullingSet = new PooledResource(createCullingSet);
 
     // data for caching camera matrix inverse for computation of world/view
     // contains index of the camera node in the nodepath
-    this._cameraIndexStack = [];
+    this._cameraIndexStack = new PooledArray();
+
     // contains index of the camera modelview matrix in the modelViewMatrixStack
-    this._cameraModelViewIndexStack = [];
+    this._cameraModelViewIndexStack = new PooledArray();
 
     // contains the id has a key to computed Inverse Matrix
-    this._cameraMatrixInverse = [];
+    this._cameraMatrixInverse = new PooledMap();
     this._cameraMatrixInverseRoot = undefined;
-
 };
 
-CullStack.prototype = MACROUTILS.objectInherit( CullSettings.prototype, {
+utils.createPrototypeObject(
+    CullStack,
+    utils.objectInherit(CullSettings.prototype, {
+        reset: function() {
+            this._modelViewMatrixStack.reset();
+            this._projectionMatrixStack.reset();
+            this._cullingSetStack.reset();
 
-    _getReservedCullingSet: function () {
-        var m = this._reserveCullingSetStack[ this._reserveCullingSetStack.current++ ];
-        if ( this._reserveCullingSetStack.current === this._reserveCullingSetStack.length ) {
-            this._reserveCullingSetStack.push( new CullingSet() );
-        }
-        return m;
-    },
-    reset: function () {
-        this._modelViewMatrixStack.length = 0;
-        this._projectionMatrixStack.length = 0;
-        this._cullingSetStack.length = 0;
+            this._pooledMatrix.reset();
+            this._pooledCullingSet.reset();
 
-        this._reservedMatrixStack.reset();
-        this._reserveCullingSetStack.current = 0;
+            this._cameraModelViewIndexStack.reset();
+            this._cameraIndexStack.reset();
 
-        this._cameraModelViewIndexStack.length = 0;
-        this._cameraIndexStack.length = 0;
-        this._cameraMatrixInverse.length = 0;
-        this._cameraMatrixInverseRoot = undefined;
-    },
+            this._cameraMatrixInverse.reset();
 
-    getProjectionMatrixStack: function () {
-        return this._projectionMatrixStack;
-    },
-    getCurrentProjectionMatrix: function () {
-        return this._projectionMatrixStack[ this._projectionMatrixStack.length - 1 ];
-    },
+            this._cameraMatrixInverseRoot = undefined;
+        },
 
-    getCurrentModelViewMatrix: function () {
-        return this._modelViewMatrixStack[ this._modelViewMatrixStack.length - 1 ];
-    },
+        getProjectionMatrixStack: function() {
+            return this._projectionMatrixStack;
+        },
+        getCurrentProjectionMatrix: function() {
+            return this._projectionMatrixStack.back();
+        },
 
-    getCameraInverseMatrix: function () {
+        getCurrentModelViewMatrix: function() {
+            return this._modelViewMatrixStack.back();
+        },
 
-        // Return or compute and cache the MatrixInverse of the last
-        // active camera in absolute reference
+        getCameraInverseMatrix: function() {
+            // Return or compute and cache the MatrixInverse of the last
+            // active camera in absolute reference
 
-        // if no index the camera inverse is the root with an fake id
-        if ( !this._cameraIndexStack.length )
-            return this._cameraMatrixInverseRoot;
+            // if no index the camera inverse is the root with an fake id
+            if (!this._cameraIndexStack.getLength()) return this._cameraMatrixInverseRoot;
 
-        var idx = this._cameraIndexStack[ this._cameraIndexStack.length - 1 ];
+            var idx = this._cameraIndexStack.back();
 
-        // get the camera node
-        var camera = this.getNodePath()[ idx ];
-        var id = camera.getInstanceID();
+            // get the camera node
+            var camera = this.getNodePath()[idx];
+            var id = camera.getInstanceID();
 
-        if ( this._cameraMatrixInverse[ id ] === undefined ) {
-            var indexInModelViewMatrixStack = this._cameraModelViewIndexStack[ this._cameraModelViewIndexStack.length - 1 ];
-            var mat = this._modelViewMatrixStack[ indexInModelViewMatrixStack ];
-            var matInverse = this._reservedMatrixStack.get();
-            mat4.invert( matInverse, mat );
-            this._cameraMatrixInverse[ id ] = matInverse;
-        }
-        return this._cameraMatrixInverse[ id ];
-    },
+            var mapCameraInverse = this._cameraMatrixInverse.getMap();
+            var cameraInverse = mapCameraInverse[id];
 
-    getCurrentModelMatrix: function () {
-        // Improvment could be to cache more things
-        // and / or use this method only if the shader use it
-        var invMatrix = this.getCameraInverseMatrix();
-        var m = this._reservedMatrixStack.get();
-        var world = mat4.mul( m, invMatrix, this.getCurrentModelViewMatrix() );
-        return world;
-    },
+            if (cameraInverse === undefined) {
+                var indexInModelViewMatrixStack = this._cameraModelViewIndexStack.back();
+                var mat = this._modelViewMatrixStack.getArray()[indexInModelViewMatrixStack];
+                cameraInverse = this._pooledMatrix.getOrCreateObject();
+                mat4.invert(cameraInverse, mat);
+                this._cameraMatrixInverse.set(id, cameraInverse);
+            }
+            return cameraInverse;
+        },
 
-    getCurrentViewMatrix: function () {
-        // Improvment could be to cache more things
-        // and / or use this method only if the shader use it
-        if ( !this._cameraIndexStack.length )
-            return this._modelViewMatrixStack[ 0 ];
+        getCurrentModelMatrix: function() {
+            // Improvment could be to cache more things
+            // and / or use this method only if the shader use it
+            var invMatrix = this.getCameraInverseMatrix();
+            var m = this._pooledMatrix.getOrCreateObject();
+            var world = mat4.mul(m, invMatrix, this.getCurrentModelViewMatrix());
+            return world;
+        },
 
-        // also we could keep the index of the current to avoid lenght-1 at each access
-        // it's implemented in osg like that:
-        // https://github.com/openscenegraph/osg/blob/master/include/osg/fast_back_stack
-        var idx = this._cameraModelViewIndexStack[ this._cameraModelViewIndexStack.length - 1 ];
-        return this._modelViewMatrixStack[ idx ];
-    },
+        getCurrentViewMatrix: function() {
+            // Improvment could be to cache more things
+            // and / or use this method only if the shader use it
+            var modelViewMatrixStackArray = this._modelViewMatrixStack.getArray();
+            if (!this._cameraIndexStack.getLength()) return modelViewMatrixStackArray[0];
 
-    getViewport: function () {
-        if ( this._viewportStack.length === 0 ) {
-            return undefined;
-        }
-        return this._viewportStack[ this._viewportStack.length - 1 ];
-    },
-    getLookVectorLocal: function ( outLookVector ) {
-        var lookVectorLocal = this.getCurrentModelViewMatrix();
-        return vec3.set( outLookVector, -lookVectorLocal[ 2 ], -lookVectorLocal[ 6 ], -lookVectorLocal[ 10 ] );
-    },
-    pushViewport: function ( vp ) {
-        this._viewportStack.push( vp );
-    },
-    popViewport: function () {
-        this._viewportStack.pop();
-    },
+            // also we could keep the index of the current to avoid lenght-1 at each access
+            // it's implemented in osg like that:
+            // https://github.com/openscenegraph/osg/blob/master/include/osg/fast_back_stack
+            return modelViewMatrixStackArray[this._cameraModelViewIndexStack.back()];
+        },
 
-    getFrustumPlanes: ( function () {
+        getViewport: function() {
+            if (this._viewportStack.getLength() === 0) {
+                return undefined;
+            }
+            return this._viewportStack.back();
+        },
+        getLookVectorLocal: function(outLookVector) {
+            var lookVectorLocal = this.getCurrentModelViewMatrix();
+            return vec3.set(
+                outLookVector,
+                -lookVectorLocal[2],
+                -lookVectorLocal[6],
+                -lookVectorLocal[10]
+            );
+        },
+        pushViewport: function(vp) {
+            this._viewportStack.push(vp);
+        },
+        popViewport: function() {
+            this._viewportStack.pop();
+        },
 
-        var mvp = mat4.create();
+        getFrustumPlanes: (function() {
+            var mvp = mat4.create();
 
-        return function ( out, projection, view, withNearFar ) {
-            mat4.mul( mvp, projection, view );
+            return function(out, projection, view, withNearFar) {
+                mat4.mul(mvp, projection, view);
 
-            var computeNearFar = !!withNearFar;
+                var computeNearFar = !!withNearFar;
 
-            // Right clipping plane.
-            var right = out[ 0 ];
-            right[ 0 ] = mvp[ 3 ] - mvp[ 0 ];
-            right[ 1 ] = mvp[ 7 ] - mvp[ 4 ];
-            right[ 2 ] = mvp[ 11 ] - mvp[ 8 ];
-            right[ 3 ] = mvp[ 15 ] - mvp[ 12 ];
+                // Right clipping plane.
+                var right = out[0];
+                right[0] = mvp[3] - mvp[0];
+                right[1] = mvp[7] - mvp[4];
+                right[2] = mvp[11] - mvp[8];
+                right[3] = mvp[15] - mvp[12];
 
-            // Left clipping plane.
-            var left = out[ 1 ];
-            left[ 0 ] = mvp[ 3 ] + mvp[ 0 ];
-            left[ 1 ] = mvp[ 7 ] + mvp[ 4 ];
-            left[ 2 ] = mvp[ 11 ] + mvp[ 8 ];
-            left[ 3 ] = mvp[ 15 ] + mvp[ 12 ];
+                // Left clipping plane.
+                var left = out[1];
+                left[0] = mvp[3] + mvp[0];
+                left[1] = mvp[7] + mvp[4];
+                left[2] = mvp[11] + mvp[8];
+                left[3] = mvp[15] + mvp[12];
 
-            // Bottom clipping plane.
-            var bottom = out[ 2 ];
-            bottom[ 0 ] = mvp[ 3 ] + mvp[ 1 ];
-            bottom[ 1 ] = mvp[ 7 ] + mvp[ 5 ];
-            bottom[ 2 ] = mvp[ 11 ] + mvp[ 9 ];
-            bottom[ 3 ] = mvp[ 15 ] + mvp[ 13 ];
+                // Bottom clipping plane.
+                var bottom = out[2];
+                bottom[0] = mvp[3] + mvp[1];
+                bottom[1] = mvp[7] + mvp[5];
+                bottom[2] = mvp[11] + mvp[9];
+                bottom[3] = mvp[15] + mvp[13];
 
-            // Top clipping plane.
-            var top = out[ 3 ];
-            top[ 0 ] = mvp[ 3 ] - mvp[ 1 ];
-            top[ 1 ] = mvp[ 7 ] - mvp[ 5 ];
-            top[ 2 ] = mvp[ 11 ] - mvp[ 9 ];
-            top[ 3 ] = mvp[ 15 ] - mvp[ 13 ];
+                // Top clipping plane.
+                var top = out[3];
+                top[0] = mvp[3] - mvp[1];
+                top[1] = mvp[7] - mvp[5];
+                top[2] = mvp[11] - mvp[9];
+                top[3] = mvp[15] - mvp[13];
 
-            if ( computeNearFar ) {
-                // Far clipping plane.
-                var far = out[ 4 ];
-                far[ 0 ] = mvp[ 3 ] - mvp[ 2 ];
-                far[ 1 ] = mvp[ 7 ] - mvp[ 6 ];
-                far[ 2 ] = mvp[ 11 ] - mvp[ 10 ];
-                far[ 3 ] = mvp[ 15 ] - mvp[ 14 ];
+                if (computeNearFar) {
+                    // Far clipping plane.
+                    var far = out[4];
+                    far[0] = mvp[3] - mvp[2];
+                    far[1] = mvp[7] - mvp[6];
+                    far[2] = mvp[11] - mvp[10];
+                    far[3] = mvp[15] - mvp[14];
 
-                // Near clipping plane.
-                var near = out[ 5 ];
-                near[ 0 ] = mvp[ 3 ] + mvp[ 2 ];
-                near[ 1 ] = mvp[ 7 ] + mvp[ 6 ];
-                near[ 2 ] = mvp[ 11 ] + mvp[ 10 ];
-                near[ 3 ] = mvp[ 15 ] + mvp[ 14 ];
+                    // Near clipping plane.
+                    var near = out[5];
+                    near[0] = mvp[3] + mvp[2];
+                    near[1] = mvp[7] + mvp[6];
+                    near[2] = mvp[11] + mvp[10];
+                    near[3] = mvp[15] + mvp[14];
+                }
+
+                //Normalize the planes
+                var j = withNearFar ? 6 : 4;
+                for (var i = 0; i < j; i++) {
+                    Plane.normalizeEquation(out[i]);
+                }
+            };
+        })(),
+
+        pushCullingSet: function() {
+            var cs = this._pooledCullingSet.getOrCreateObject();
+            if (this._enableFrustumCulling) {
+                mat4.getFrustumPlanes(
+                    cs.getFrustum().getPlanes(),
+                    this.getCurrentProjectionMatrix(),
+                    this.getCurrentModelViewMatrix(),
+                    false
+                );
+                // TODO: no far no near.
+                // should check if we have them
+                // should add at least a near 0 clip if not
+                cs.getFrustum().setupMask(4);
             }
 
-            //Normalize the planes
-            var j = withNearFar ? 6 : 4;
-            for ( var i = 0; i < j; i++ ) {
-                Plane.normalizeEquation( out[ i ] );
-            }
+            this._cullingSetStack.push(cs);
+        },
+        popCullingSet: function() {
+            return this._cullingSetStack.pop();
+        },
+        getCurrentCullingSet: function() {
+            return this._cullingSetStack.back();
+        },
 
-        };
-    } )(),
+        pushCurrentMask: function() {
+            var cs = this.getCurrentCullingSet();
+            if (cs) cs.pushCurrentMask();
+        },
+        popCurrentMask: function() {
+            var cs = this.getCurrentCullingSet();
+            if (cs) cs.popCurrentMask();
+        },
 
-    pushCullingSet: function () {
-        var cs = this._getReservedCullingSet();
-        if ( this._enableFrustumCulling ) {
-            mat4.getFrustumPlanes( cs.getFrustum().getPlanes(), this.getCurrentProjectionMatrix(), this.getCurrentModelViewMatrix(), false );
-            // TODO: no far no near.
-            // should check if we have them
-            // should add at least a near 0 clip if not
-            cs.getFrustum().setupMask( 4 );
-        }
+        isVerticesCulled: function(vertices) {
+            if (!this._enableFrustumCulling) return false;
+            return this.getCurrentCullingSet().isVerticesCulled(vertices);
+        },
 
-        this._cullingSetStack.push( cs );
-    },
-    popCullingSet: function () {
-        return this._cullingSetStack.pop();
-    },
-    getCurrentCullingSet: function () {
-        return this._cullingSetStack[ this._cullingSetStack.length - 1 ];
-    },
+        isBoundingBoxCulled: function(bb) {
+            if (!this._enableFrustumCulling) return false;
+            return bb.valid() && this.getCurrentCullingSet().isBoundingBoxCulled(bb);
+        },
 
+        isBoundingSphereCulled: function(bs) {
+            if (!this._enableFrustumCulling) return false;
+            return bs.valid() && this.getCurrentCullingSet().isBoundingSphereCulled(bs);
+        },
 
-    pushCurrentMask: function () {
-        var cs = this.getCurrentCullingSet();
-        if ( cs ) cs.pushCurrentMask();
-    },
-    popCurrentMask: function () {
-        var cs = this.getCurrentCullingSet();
-        if ( cs ) cs.popCurrentMask();
-    },
+        isCulled: (function() {
+            var bsWorld = new BoundingSphere();
+            return function(node, nodePath) {
+                if (!this._enableFrustumCulling) return false;
+                if (node.isCullingActive()) {
+                    if (this.getCurrentCullingSet().getCurrentResultMask() === 0) return false; // father bounding sphere totally inside
 
-    isVerticesCulled: function ( vertices ) {
-        if ( !this._enableFrustumCulling )
-            return false;
-        return this.getCurrentCullingSet().isVerticesCulled( vertices );
-    },
+                    var matrix = this._pooledMatrix.getOrCreateObject();
+                    mat4.identity(matrix);
 
-    isBoundingBoxCulled: function ( bb ) {
-        if ( !this._enableFrustumCulling )
-            return false;
-        return bb.valid() && this.getCurrentCullingSet().isBoundingBoxCulled( bb );
-    },
+                    var maxNodePathLength = nodePath.length;
+                    if (node instanceof Transform) {
+                        // MatrixTransform getBound is already transformed to
+                        // its local space whereas nodepath also have its matrix ...
+                        // so to get world space, you HAVE to remove that matrix from nodePATH
+                        maxNodePathLength--;
+                    }
 
-    isBoundingSphereCulled: function ( bs ) {
-        if ( !this._enableFrustumCulling )
-            return false;
-        return bs.valid() && this.getCurrentCullingSet().isBoundingSphereCulled( bs );
-    },
+                    ComputeMatrixFromNodePath.computeLocalToWorld(
+                        nodePath,
+                        true,
+                        matrix,
+                        maxNodePathLength
+                    );
 
-    isCulled: ( function () {
-        var bsWorld = new BoundingSphere();
-        return function ( node, nodePath ) {
-            if ( !this._enableFrustumCulling )
-                return false;
-            if ( node.isCullingActive() ) {
-                if ( this.getCurrentCullingSet().getCurrentResultMask() === 0 )
-                    return false; // father bounding sphere totally inside
+                    node.getBound().transformMat4(bsWorld, matrix);
 
-                var matrix = this._reservedMatrixStack.get();
-                mat4.identity( matrix );
-
-                // TODO: Perf just get World Matrix at each node transform
-                // store it in a World Transform Node Path (only world matrix change)
-                // so that it's computed once and reused for each further node getCurrentModel
-                // otherwise, it's 1 mult for each node, each matrix node, and each geometry
-                //matrix = this.getCurrentModelMatrix();
-                // tricky: change push be before isculled, and pop in case of culling
-                // strange bug for now on frustum culling sample with that
-
-                if ( node instanceof Transform ) {
-
-                    // tricky: MatrixTransform getBound is already transformed to
-                    // its local space whereas nodepath also have its matrix ...
-                    // so to get world space, you HAVE to remove that matrix from nodePATH
-                    // TODO: GC Perf of array slice creating new array
-                    matrix = ComputeMatrixFromNodePath.computeLocalToWorld( nodePath.slice( 0, nodePath.length - 1 ), true, matrix );
-
+                    return this.getCurrentCullingSet().isBoundingSphereCulled(bsWorld);
                 } else {
+                    this.getCurrentCullingSet().resetCullingMask();
+                    return false;
+                }
+            };
+        })(),
 
-                    matrix = ComputeMatrixFromNodePath.computeLocalToWorld( nodePath, true, matrix );
-
+        pushModelViewMatrix: (function() {
+            var lookVector = vec3.create();
+            return function(matrix) {
+                // When pushing a matrix, it can be a transform or camera. To compute
+                // differents matrix type in shader ( ViewMatrix/ModelMatrix/ModelViewMatrix )
+                // we track camera node when using pushModelViewMatrix
+                // To detect a camera, we check on the nodepath the type of the node and if the
+                // camera is relatif or absolute.
+                // When we detect an absolute camera we keep it's index to get it when needed to
+                // compute the World/View matrix
+                // Th    ere is an exception for the root camera, the root camera is not pushed on the
+                // CullVisitor but only its matrixes, so to handle this we compute the inverse camera
+                // when the nodepath has a lenght of 0
+                // To avoid to compute too much inverse matrix, we keep a cache of them during the
+                // traverse and store the result under the instanceID key, except for the root
+                var np = this.getNodePath();
+                var length = np.length;
+                if (!length) {
+                    // root
+                    var matInverse = this._pooledMatrix.getOrCreateObject();
+                    mat4.invert(matInverse, matrix);
+                    this._cameraMatrixInverseRoot = matInverse;
+                } else {
+                    var index = length - 1;
+                    if (
+                        np[index].getTypeID() === Camera.getTypeID() &&
+                        np[index].getReferenceFrame() === TransformEnums.ABSOLUTE_RF
+                    ) {
+                        this._cameraIndexStack.push(index);
+                        this._cameraModelViewIndexStack.push(
+                            this._modelViewMatrixStack.getLength()
+                        );
+                    }
                 }
 
-                // Matrix.transformBoundingSphere( matrix, node.getBound(), bsWorld );
-                node.getBound().transformMat4( bsWorld, matrix );
+                this._modelViewMatrixStack.push(matrix);
+                this.getLookVectorLocal(lookVector);
 
-                return this.getCurrentCullingSet().isBoundingSphereCulled( bsWorld );
-            } else {
-                this.getCurrentCullingSet().resetCullingMask();
-                return false;
-            }
-        };
-    } )(),
+                /*jshint bitwise: false */
+                this._bbCornerFar =
+                    (lookVector[0] >= 0 ? 1 : 0) |
+                    (lookVector[1] >= 0 ? 2 : 0) |
+                    (lookVector[2] >= 0 ? 4 : 0);
+                this._bbCornerNear = ~this._bbCornerFar & 7;
+                /*jshint bitwise: true */
+            };
+        })(),
+        popModelViewMatrix: (function() {
+            var lookVector = vec3.create();
 
-
-
-    pushModelViewMatrix: ( function () {
-        var lookVector = vec3.create();
-        return function ( matrix ) {
-
-            // When pushing a matrix, it can be a transform or camera. To compute
-            // differents matrix type in shader ( ViewMatrix/ModelMatrix/ModelViewMatrix )
-            // we track camera node when using pushModelViewMatrix
-            // To detect a camera, we check on the nodepath the type of the node and if the
-            // camera is relatif or absolute.
-            // When we detect an absolute camera we keep it's index to get it when needed to
-            // compute the World/View matrix
-            // Th    ere is an exception for the root camera, the root camera is not pushed on the
-            // CullVisitor but only its matrixes, so to handle this we compute the inverse camera
-            // when the nodepath has a lenght of 0
-            // To avoid to compute too much inverse matrix, we keep a cache of them during the
-            // traverse and store the result under the instanceID key, except for the root
-            var np = this.getNodePath();
-            var length = np.length;
-            if ( !length ) { // root
-                var matInverse = this._reservedMatrixStack.get();
-                mat4.invert( matInverse, matrix );
-                this._cameraMatrixInverseRoot = matInverse;
-            } else {
-                var index = length - 1;
-                if ( np[ index ].getTypeID() === Camera.getTypeID() && np[ index ].getReferenceFrame() === TransformEnums.ABSOLUTE_RF ) {
-                    this._cameraIndexStack.push( index );
-                    this._cameraModelViewIndexStack.push( this._modelViewMatrixStack.length );
+            return function() {
+                // if same index it's a camera and we have to pop it
+                var np = this.getNodePath();
+                var index = np.length - 1;
+                if (this._cameraIndexStack.getLength() && index === this._cameraIndexStack.back()) {
+                    this._cameraIndexStack.pop();
+                    this._cameraModelViewIndexStack.pop();
                 }
-            }
 
-            this._modelViewMatrixStack.push( matrix );
-            this.getLookVectorLocal( lookVector );
+                this._modelViewMatrixStack.pop();
 
-            /*jshint bitwise: false */
-            this._bbCornerFar = ( lookVector[ 0 ] >= 0 ? 1 : 0 ) | ( lookVector[ 1 ] >= 0 ? 2 : 0 ) | ( lookVector[ 2 ] >= 0 ? 4 : 0 );
-            this._bbCornerNear = ( ~this._bbCornerFar ) & 7;
-            /*jshint bitwise: true */
+                if (this._modelViewMatrixStack.getLength()) {
+                    this.getLookVectorLocal(lookVector);
+                } else {
+                    vec3.set(lookVector, 0.0, 0.0, -1.0);
+                }
 
-        };
-    } )(),
-    popModelViewMatrix: ( function () {
-        var lookVector = vec3.create();
+                /*jshint bitwise: false */
+                this._bbCornerFar =
+                    (lookVector[0] >= 0.0 ? 1.0 : 0.0) |
+                    (lookVector[1] >= 0 ? 2.0 : 0.0) |
+                    (lookVector[2] >= 0 ? 4.0 : 0.0);
+                this._bbCornerNear = ~this._bbCornerFar & 7;
+                /*jshint bitwise: true */
+            };
+        })(),
 
-        return function () {
+        pushProjectionMatrix: function(matrix) {
+            this._projectionMatrixStack.push(matrix);
 
-            // if same index it's a camera and we have to pop it
-            var np = this.getNodePath();
-            var index = np.length - 1;
-            if ( this._cameraIndexStack.length && index === this._cameraIndexStack[ this._cameraIndexStack.length - 1 ] ) {
-                this._cameraIndexStack.pop();
-                this._cameraModelViewIndexStack.pop();
-            }
+            // need to recompute frustum volume.
+            this._frustumVolume = -1.0;
 
-            this._modelViewMatrixStack.pop();
+            this.pushCullingSet();
+        },
+        popProjectionMatrix: function() {
+            this._projectionMatrixStack.pop();
 
-            if ( this._modelViewMatrixStack.length !== 0 ) {
-                this.getLookVectorLocal( lookVector );
-            } else {
-                vec3.set( lookVector, 0.0, 0.0, -1.0 );
-            }
+            // need to recompute frustum volume.
+            this._frustumVolume = -1.0;
 
-            /*jshint bitwise: false */
-            this._bbCornerFar = ( lookVector[ 0 ] >= 0.0 ? 1.0 : 0.0 ) | ( lookVector[ 1 ] >= 0 ? 2.0 : 0.0 ) | ( lookVector[ 2 ] >= 0 ? 4.0 : 0.0 );
-            this._bbCornerNear = ( ~this._bbCornerFar ) & 7;
-            /*jshint bitwise: true */
-        };
-    } )(),
+            this.popCullingSet();
+        }
+    }),
+    'osg',
+    'CullStack'
+);
 
-    pushProjectionMatrix: function ( matrix ) {
-        this._projectionMatrixStack.push( matrix );
-
-        // need to recompute frustum volume.
-        this._frustumVolume = -1.0;
-
-        this.pushCullingSet();
-    },
-    popProjectionMatrix: function () {
-        this._projectionMatrixStack.pop();
-
-        // need to recompute frustum volume.
-        this._frustumVolume = -1.0;
-
-        this.popCullingSet();
-    }
-
-
-} );
-
-module.exports = CullStack;
+export default CullStack;

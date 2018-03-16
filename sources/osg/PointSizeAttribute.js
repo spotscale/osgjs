@@ -1,75 +1,85 @@
-'use strict';
+import utils from 'osg/utils';
+import StateAttribute from 'osg/StateAttribute';
+import Uniform from 'osg/Uniform';
 
-var MACROUTILS = require( 'osg/Utils' );
-var StateAttribute = require( 'osg/StateAttribute' );
-var Uniform = require( 'osg/Uniform' );
-var Map = require( 'osg/Map' );
-
-
-var PointSizeAttribute = function ( disable ) {
-    StateAttribute.call( this );
+var PointSizeAttribute = function(disable) {
+    StateAttribute.call(this);
 
     this._enable = !disable;
     this._pointSize = 1.0;
     // careful with this option if there is lines/triangles under the stateset
     this._circleShape = false;
+    this._dirtyHash = true;
+    this._hash = '';
 };
 
-PointSizeAttribute.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( StateAttribute.prototype, {
+utils.createPrototypeStateAttribute(
+    PointSizeAttribute,
+    utils.objectInherit(StateAttribute.prototype, {
+        attributeType: 'PointSize',
 
-    attributeType: 'PointSize',
+        cloneType: function() {
+            return new PointSizeAttribute(true);
+        },
 
-    cloneType: function () {
-        return new PointSizeAttribute( true );
-    },
+        setCircleShape: function(bool) {
+            this._circleShape = bool;
+            this._dirtyHash = true;
+        },
 
-    setCircleShape: function ( bool ) {
-        this._circleShape = bool;
-    },
+        isCircleShape: function() {
+            return this._circleShape;
+        },
 
-    isCircleShape: function () {
-        return this._circleShape;
-    },
+        setEnabled: function(state) {
+            this._enable = state;
+            this._dirtyHash = true;
+        },
 
-    setEnabled: function ( state ) {
-        this._enable = state;
-    },
+        isEnabled: function() {
+            return this._enable;
+        },
 
-    isEnabled: function () {
-        return this._enable;
-    },
+        setPointSize: function(size) {
+            this._pointSize = size;
+        },
 
-    setPointSize: function ( size ) {
-        this._pointSize = size;
-    },
+        getOrCreateUniforms: function() {
+            var obj = PointSizeAttribute;
+            if (obj.uniforms) return obj.uniforms;
 
-    getOrCreateUniforms: function () {
-        var obj = PointSizeAttribute;
-        if ( obj.uniforms ) return obj.uniforms;
+            obj.uniforms = {
+                pointSize: Uniform.createFloat(1.0, 'uPointSize')
+            };
 
-        var uniformList = {
-            pointSize: Uniform.createFloat( 1.0, 'uPointSize' )
-        };
+            return obj.uniforms;
+        },
 
-        obj.uniforms = new Map( uniformList );
-        return obj.uniforms;
-    },
+        getHash: function() {
+            if (!this._dirtyHash) return this._hash;
 
-    getHash: function () {
-        return this.getTypeMember() + ( this.isEnabled() ? '1' : '0' ) + ( this._circleShape ? '1' : '0' );
-    },
+            this._hash = this._computeInternalHash();
+            this._dirtyHash = false;
+            return this._hash;
+        },
 
-    apply: function () {
+        _computeInternalHash: function() {
+            return (
+                this.getTypeMember() +
+                (this.isEnabled() ? '1' : '0') +
+                (this._circleShape ? '1' : '0')
+            );
+        },
 
-        if ( !this._enable ) return;
+        apply: function() {
+            if (!this._enable) return;
 
-        var uniforms = this.getOrCreateUniforms();
-        uniforms.pointSize.setFloat( this._pointSize );
+            var uniforms = this.getOrCreateUniforms();
+            uniforms.pointSize.setFloat(this._pointSize);
+        }
+    }),
+    'osg',
+    'PointSizeAttribute'
+);
 
-    }
-
-} ), 'osg', 'PointSizeAttribute' );
-
-MACROUTILS.setTypeID( PointSizeAttribute );
-
-module.exports = PointSizeAttribute;
+export default PointSizeAttribute;

@@ -1,22 +1,16 @@
 /* exported files */
+// eslint-disable-next-line
 var files = {
-    'Examples': [
+    Examples: [
         'animation',
         'camera',
-        'camera-gallery',
-        'cubemap',
         'cubemotion',
         'drawbuffers',
-        'fog',
         'frustum-culling',
         'geometry',
         'gizmo',
-        'ground',
-        'hdr',
-        'instanced-arrays',
         'lights',
         'materials',
-        'menu3d',
         'morph',
         'multipleviewers',
         'pagedlod',
@@ -30,14 +24,13 @@ var files = {
         'shadowmap',
         'sound-3d',
         'split-rendering-rtt',
-        'ssao',
-        'temporal',
         'text2D',
         'texture-video',
         'webVR'
     ],
-    'Tutorials': [
-        'advanced-customshader',
+
+    Tutorials: [
+        'multi-viewport-rtt',
         'animate-lightcolor',
         'animate-rotation',
         'animate-transparency',
@@ -48,7 +41,6 @@ var files = {
         'load-model',
         'multiplelights',
         'screenshot',
-        'usercamera',
-    ],
-
+        'usercamera'
+    ]
 };

@@ -1,10 +1,8 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var StateAttribute = require( 'osg/StateAttribute' );
+import utils from 'osg/utils';
+import StateAttribute from 'osg/StateAttribute';
 
-var Scissor = function ( x, y, w, h ) {
-
-    StateAttribute.call( this );
+var Scissor = function(x, y, w, h) {
+    StateAttribute.call(this);
 
     this._x = x !== undefined ? x : -1;
     this._y = y !== undefined ? y : -1;
@@ -13,55 +11,44 @@ var Scissor = function ( x, y, w, h ) {
     this._height = h !== undefined ? h : -1;
 };
 
-Scissor.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( StateAttribute.prototype, {
+utils.createPrototypeStateAttribute(
+    Scissor,
+    utils.objectInherit(StateAttribute.prototype, {
+        attributeType: 'Scissor',
 
-    attributeType: 'Scissor',
+        cloneType: function() {
+            return new Scissor();
+        },
 
-    cloneType: function () {
-        return new Scissor();
-    },
+        setScissor: function(x, y, width, height) {
+            this._x = x;
+            this._y = y;
+            this._width = width;
+            this._height = height;
+        },
 
-    apply: function ( state ) {
+        x: function() {
+            return this._x;
+        },
 
-        var gl = state.getGraphicContext();
-        if ( this._x !== -1 ) {
+        y: function() {
+            return this._y;
+        },
 
-            gl.enable( gl.SCISSOR_TEST );
-            gl.scissor( this._x, this._y, this._width, this._height );
+        width: function() {
+            return this._width;
+        },
 
-        } else {
+        height: function() {
+            return this._height;
+        },
 
-            gl.disable( gl.SCISSOR_TEST );
-
+        apply: function(state) {
+            state.applyScissor(this);
         }
-    },
+    }),
+    'osg',
+    'Scissor'
+);
 
-    setScissor: function ( x, y, width, height ) {
-
-        this._x = x;
-        this._y = y;
-        this._width = width;
-        this._height = height;
-
-    },
-
-    x: function () {
-        return this._x;
-    },
-
-    y: function () {
-        return this._y;
-    },
-
-    width: function () {
-        return this._width;
-    },
-
-    height: function () {
-        return this._height;
-    }
-
-
-} ), 'osg', 'Scissor' );
-
-module.exports = Scissor;
+export default Scissor;

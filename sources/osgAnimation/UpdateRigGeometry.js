@@ -1,53 +1,58 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var Notify = require( 'osg/notify' );
-var ObjectBase = require( 'osg/Object' );
-var FindNearestParentSkeleton = require( 'osgAnimation/FindNearestParentSkeleton' );
-
+import utils from 'osg/utils';
+import notify from 'osg/notify';
+import ObjectBase from 'osg/Object';
+import FindNearestParentSkeleton from 'osgAnimation/FindNearestParentSkeleton';
 
 // converted from C++ probably it could be merged into RigGeometry
 // it could probably inlined into RigGeometry code
-var UpdateRigGeometry = function () {
-    ObjectBase.call( this );
+var UpdateRigGeometry = function() {
+    ObjectBase.call(this);
 };
 
-UpdateRigGeometry.prototype = MACROUTILS.objectInherit( ObjectBase.prototype, {
+utils.createPrototypeObject(
+    UpdateRigGeometry,
+    utils.objectInherit(ObjectBase.prototype, {
+        init: function(geom) {
+            var finder = new FindNearestParentSkeleton();
+            if (geom.getParents().length > 1)
+                notify.warn(
+                    'A RigGeometry should not have multi parent ( ' + geom.getName() + ' )'
+                );
 
-    init: function ( geom ) {
+            geom.getParents()[0].accept(finder);
 
-        var finder = new FindNearestParentSkeleton();
-        if ( geom.getParents().length > 1 )
-            Notify.warn( 'A RigGeometry should not have multi parent ( ' + geom.getName() + ' )' );
+            if (!finder._root) {
+                notify.warn(
+                    'A RigGeometry did not find a parent skeleton for RigGeometry ( ' +
+                        geom.getName() +
+                        ' )'
+                );
+                return;
+            }
 
-        geom.getParents()[ 0 ].accept( finder );
+            geom.setSkeleton(finder._root);
+            geom.setPathToSkeleton(finder._pathToRoot);
+        },
 
-        if ( !finder._root ) {
-            Notify.warn( 'A RigGeometry did not find a parent skeleton for RigGeometry ( ' + geom.getName() + ' )' );
-            return;
+        update: function(node /*, nv*/) {
+            // Circular ref
+            if (node && node.className() !== 'RigGeometry') return true;
+
+            var geom = node;
+
+            // maybe this code could simpler
+            if (!geom.getSkeleton() && geom.getParents().length !== 0) this.init(geom);
+            if (!geom.getSkeleton()) return true;
+
+            if (geom.getNeedToComputeMatrix()) geom.computeMatrixFromRootSkeleton();
+
+            geom.update();
+
+            return true;
         }
+    }),
+    'osgAnimation',
+    'UpdateRigGeometry'
+);
 
-        geom.setSkeleton( finder._root );
-        geom.setPathToSkeleton( finder._pathToRoot );
-    },
-
-    update: function ( node /*, nv*/ ) {
-
-        // Circular ref
-        if ( node && node.className() !== 'RigGeometry' ) return true;
-
-        var geom = node;
-
-        // maybe this code could simpler
-        if ( !geom.getSkeleton() && geom.getParents().length !== 0 ) this.init( geom );
-        if ( !geom.getSkeleton() ) return true;
-
-        if ( geom.getNeedToComputeMatrix() ) geom.computeMatrixFromRootSkeleton();
-
-        geom.update();
-
-        return true;
-    }
-
-} );
-
-module.exports = UpdateRigGeometry;
+export default UpdateRigGeometry;

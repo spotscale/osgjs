@@ -1,13 +1,13 @@
-'use strict';
-var LineSegmentIntersector = require( 'tests/osgUtil/LineSegmentIntersector' );
-var TriangleIntersector = require( 'tests/osgUtil/TriangleIntersector' );
-var PolytopeIntersector = require( 'tests/osgUtil/PolytopeIntersector' );
-var IntersectionVisitor = require( 'tests/osgUtil/IntersectionVisitor' );
+import LineSegmentIntersector from 'tests/osgUtil/LineSegmentIntersector';
+import LineSegmentIntersectFunctor from 'tests/osgUtil/LineSegmentIntersectFunctor';
+import PolytopeIntersector from 'tests/osgUtil/PolytopeIntersector';
+import IntersectionVisitor from 'tests/osgUtil/IntersectionVisitor';
+import SphereIntersector from 'tests/osgUtil/SphereIntersector';
 
-
-module.exports = function () {
+export default function() {
     LineSegmentIntersector();
-    TriangleIntersector();
+    LineSegmentIntersectFunctor();
     PolytopeIntersector();
     IntersectionVisitor();
-};
+    SphereIntersector();
+}

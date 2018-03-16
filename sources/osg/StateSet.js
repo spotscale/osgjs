@@ -1,9 +1,6 @@
-'use strict';
-var Map = require( 'osg/Map' );
-var Object = require( 'osg/Object' );
-var StateAttribute = require( 'osg/StateAttribute' );
-var MACROUTILS = require( 'osg/Utils' );
-
+import Object from 'osg/Object';
+import StateAttribute from 'osg/StateAttribute';
+import utils from 'osg/utils';
 
 /** Stores a set of modes and attributes which represent a set of OpenGL state.
  *  Notice that a \c StateSet contains just a subset of the whole OpenGL state.
@@ -14,13 +11,18 @@ var MACROUTILS = require( 'osg/Utils' );
  * Indeed, this practice is recommended whenever possible,
  * as this minimizes expensive state changes in the graphics pipeline.
  */
-var StateSet = function () {
-    Object.call( this );
+
+var StateSet = function() {
+    Object.call(this);
 
     this._parents = [];
-    this.attributeMap = new Map();
+    this._attributeArray = [];
+    this._textureAttributeArrayList = [];
 
-    this.textureAttributeMapList = [];
+    // cache what is really used
+    this._activeTextureAttributeUnit = [];
+    this._activeAttribute = [];
+    this._activeTextureAttribute = [];
 
     this._binName = undefined;
     this._binNumber = 0;
@@ -31,266 +33,328 @@ var StateSet = function () {
 
     this._updateCallbackList = [];
 
-    this.uniforms = new Map();
+    this.uniforms = {};
+
+    this._hasUniform = false;
 
     this._drawID = -1; // used by the RenderLeaf to decide if it should apply the stateSet
 };
 
-StateSet.AttributePair = function ( attr, value ) {
+StateSet.AttributePair = function(attr, value) {
     this._object = attr;
     this._value = value;
 };
 
 StateSet.AttributePair.prototype = {
-    getShaderGeneratorName: function () {
+    getShaderGeneratorName: function() {
         return this._object;
     },
-    getAttribute: function () {
+    getAttribute: function() {
         return this._object;
     },
-    getUniform: function () {
+    getUniform: function() {
         return this._object;
     },
-    getValue: function () {
+    getValue: function() {
         return this._value;
     }
 };
 
+utils.createPrototypeObject(
+    StateSet,
+    utils.objectInherit(Object.prototype, {
+        setDrawID: function(id) {
+            this._drawID = id;
+        },
 
-StateSet.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( Object.prototype, {
+        getDrawID: function() {
+            return this._drawID;
+        },
 
-    setDrawID: function ( id ) {
-        this._drawID = id;
-    },
+        getAttributePair: function(attribute, value) {
+            return new StateSet.AttributePair(attribute, value);
+        },
 
-    getDrawID: function () {
-        return this._drawID;
-    },
+        addUniform: function(uniform, originalMode) {
+            var mode = originalMode !== undefined ? originalMode : StateAttribute.ON;
+            var name = uniform.getName();
+            this.uniforms[name] = this.getAttributePair(uniform, mode);
+            this._hasUniform = true;
+        },
 
-    getAttributePair: function ( attribute, value ) {
-        return new StateSet.AttributePair( attribute, value );
-    },
+        addParent: function(node) {
+            this._parents.push(node);
+        },
 
-    addUniform: function ( uniform, originalMode ) {
-        var mode = originalMode !== undefined ? originalMode : StateAttribute.ON;
-        var name = uniform.getName();
-        this.uniforms[ name ] = this.getAttributePair( uniform, mode );
-        this.uniforms.dirty();
-    },
+        removeParent: function(node) {
+            var idx = this._parents.indexOf(node);
+            if (idx === -1) return;
+            this._parents.splice(idx, 1);
+        },
 
-    addParent: function ( node ) {
-        this._parents.push( node );
-    },
+        removeUniform: function(uniform) {
+            this.removeUniformByName(uniform.getName());
+        },
 
-    removeParent: function ( node ) {
-        var idx = this._parents.indexOf( node );
-        if ( idx === -1 ) return;
-        this._parents.splice( idx, 1 );
-    },
+        removeUniformByName: function(uniformName) {
+            delete this.uniforms[uniformName];
+            this._hasUniform = window.Object.keys(this.uniforms).length ? true : false;
+        },
 
-    removeUniform: function ( uniform ) {
-        this.uniforms.remove( uniform.getName() );
-    },
+        hasUniform: function() {
+            return this._hasUniform;
+        },
 
-    removeUniformByName: function ( uniformName ) {
-        this.uniforms.remove( uniformName );
-    },
-
-    getUniform: function ( uniform ) {
-        var uniformMap = this.uniforms;
-        if ( uniformMap[ uniform ] ) return uniformMap[ uniform ].getAttribute();
-        return undefined;
-    },
-
-    getUniformList: function () {
-        return this.uniforms;
-    },
-
-    setTextureAttributeAndModes: function ( unit, attribute, originalMode ) {
-        var mode = originalMode !== undefined ? originalMode : StateAttribute.ON;
-        this._setTextureAttribute( unit, this.getAttributePair( attribute, mode ) );
-    },
-
-    getNumTextureAttributeLists: function () {
-        return this.textureAttributeMapList.length;
-    },
-
-    getTextureAttribute: function ( unit, attribute ) {
-        if ( this.textureAttributeMapList[ unit ] === undefined ) return undefined;
-
-        var textureMap = this.textureAttributeMapList[ unit ];
-        if ( textureMap[ attribute ] === undefined ) return undefined;
-
-        return textureMap[ attribute ].getAttribute();
-    },
-
-    removeTextureAttribute: function ( unit, attributeName ) {
-        if ( this.textureAttributeMapList[ unit ] === undefined ) return;
-
-        var textureAttributeMap = this.textureAttributeMapList[ unit ];
-        if ( textureAttributeMap[ attributeName ] === undefined ) return;
-
-
-        textureAttributeMap.remove( attributeName );
-        this.textureAttributeMapList[ unit ].dirty();
-    },
-
-    getAttribute: function ( attributeType ) {
-        if ( this.attributeMap[ attributeType ] === undefined ) {
+        getUniform: function(uniform) {
+            var uniformMap = this.uniforms;
+            if (uniformMap[uniform]) return uniformMap[uniform].getAttribute();
             return undefined;
-        }
-        return this.attributeMap[ attributeType ].getAttribute();
-    },
+        },
 
-    setAttributeAndModes: function ( attribute, originalMode ) {
-        var mode = originalMode !== undefined ? originalMode : StateAttribute.ON;
-        this._setAttribute( this.getAttributePair( attribute, mode ) );
-    },
+        getUniformList: function() {
+            return this.uniforms;
+        },
 
-    setAttribute: function ( attribute, originalMode ) {
-        var mode = originalMode !== undefined ? originalMode : StateAttribute.ON;
-        this._setAttribute( this.getAttributePair( attribute, mode ) );
-    },
+        setTextureAttributeAndModes: function(unit, attribute, mode) {
+            this._setTextureAttribute(
+                unit,
+                this.getAttributePair(attribute, mode !== undefined ? mode : StateAttribute.ON)
+            );
+        },
 
-    // TODO: check if it's an attribute type or a attribute to remove it
-    removeAttribute: function ( attributeName ) {
+        getNumTextureAttributeLists: function() {
+            return this._textureAttributeArrayList.length;
+        },
 
-        if ( this.attributeMap[ attributeName ] !== undefined ) {
-            delete this.attributeMap[ attributeName ];
-            this.attributeMap.dirty();
-        }
-    },
+        getTextureAttribute: function(unit, typeMember) {
+            var index = utils.getTextureIdFromTypeMember(typeMember);
+            if (index === undefined || !this._hasTextureAttribute(unit, index)) return undefined;
 
-    setRenderingHint: function ( hint ) {
-        if ( hint === 'OPAQUE_BIN' ) {
-            this.setRenderBinDetails( 0, 'RenderBin' );
-        } else if ( hint === 'TRANSPARENT_BIN' ) {
-            this.setRenderBinDetails( 10, 'DepthSortedBin' );
-        } else {
-            this.setRenderBinDetails( 0, '' );
-        }
-    },
+            var textureArray = this._textureAttributeArrayList[unit];
+            if (textureArray[index]) return textureArray[index].getAttribute();
+            return undefined;
+        },
 
-    getUpdateCallbackList: function () {
-        return this._updateCallbackList;
-    },
+        removeTextureAttribute: function(unit, typeMember) {
+            var index = utils.getTextureIdFromTypeMember(typeMember);
+            if (index === undefined || !this._hasTextureAttribute(unit, index)) return;
 
-    removeUpdateCallback: function ( cb ) {
-        var idx = this._updateCallbackList.indexOf( cb );
-        if ( idx === -1 ) return;
-        this._updateCallbackList.splice( idx, 1 );
+            var textureArray = this._textureAttributeArrayList[unit];
 
-        if ( this._updateCallbackList.length === 0 ) {
+            textureArray[index] = undefined;
+            this._computeValidTextureUnit();
+        },
+
+        getAttribute: function(typeMember) {
+            var index = utils.getIdFromTypeMember(typeMember);
+            if (index === undefined || !this._hasAttribute(index)) return undefined;
+
+            return this._attributeArray[index].getAttribute();
+        },
+
+        setAttributeAndModes: function(attribute, mode) {
+            this._setAttribute(
+                this.getAttributePair(attribute, mode !== undefined ? mode : StateAttribute.ON)
+            );
+        },
+
+        setAttribute: function(attribute, mode) {
+            this.setAttributeAndModes(attribute, mode);
+        },
+
+        // TODO: check if it's an attribute type or a attribute to remove it
+        removeAttribute: function(typeMember) {
+            var index = utils.getIdFromTypeMember(typeMember);
+            if (!this._hasAttribute(index)) return;
+
+            this._attributeArray[index] = undefined;
+            this._computeValidAttribute();
+        },
+
+        setRenderingHint: function(hint) {
+            if (hint === 'OPAQUE_BIN') {
+                this.setRenderBinDetails(0, 'RenderBin');
+            } else if (hint === 'TRANSPARENT_BIN') {
+                this.setRenderBinDetails(10, 'DepthSortedBin');
+            } else {
+                this.setRenderBinDetails(0, '');
+            }
+        },
+
+        getUpdateCallbackList: function() {
+            return this._updateCallbackList;
+        },
+
+        removeUpdateCallback: function(cb) {
+            var idx = this._updateCallbackList.indexOf(cb);
+            if (idx === -1) return;
+            this._updateCallbackList.splice(idx, 1);
+
+            if (this._updateCallbackList.length === 0) {
+                var parents = this._parents;
+                for (var i = 0, l = parents.length; i < l; i++) {
+                    var parent = parents[i];
+                    parent.setNumChildrenRequiringUpdateTraversal(
+                        parent.getNumChildrenRequiringUpdateTraversal() - 1
+                    );
+                }
+            }
+        },
+
+        requiresUpdateTraversal: function() {
+            return !!this._updateCallbackList.length;
+        },
+
+        addUpdateCallback: function(cb) {
+            var dontNoticeParents = Boolean(this._updateCallbackList.length);
+            this._updateCallbackList.push(cb);
+
+            // parent alreay know we have update callback
+            if (dontNoticeParents) return;
+
             var parents = this._parents;
-            for ( var i = 0, l = parents.length; i < l; i++ ) {
-                var parent = parents[ i ];
-                parent.setNumChildrenRequiringUpdateTraversal( parent.getNumChildrenRequiringUpdateTraversal() - 1 );
+            for (var i = 0, l = parents.length; i < l; i++) {
+                var parent = parents[i];
+                parent.setNumChildrenRequiringUpdateTraversal(
+                    parent.getNumChildrenRequiringUpdateTraversal() + 1
+                );
             }
-        }
-    },
+        },
 
-    requiresUpdateTraversal: function () {
-        return !!this._updateCallbackList.length;
-    },
+        hasUpdateCallback: function(cb) {
+            return this._updateCallbackList.indexOf(cb) !== -1;
+        },
 
-    addUpdateCallback: function ( cb ) {
-
-        var dontNoticeParents = Boolean( this._updateCallbackList.length );
-        this._updateCallbackList.push( cb );
-
-        // parent alreay know we have update callback
-        if ( dontNoticeParents ) return;
-
-        var parents = this._parents;
-        for ( var i = 0, l = parents.length; i < l; i++ ) {
-            var parent = parents[ i ];
-            parent.setNumChildrenRequiringUpdateTraversal( parent.getNumChildrenRequiringUpdateTraversal() + 1 );
-        }
-    },
-
-    hasUpdateCallback: function ( cb ) {
-        return this._updateCallbackList.indexOf( cb ) !== -1;
-    },
-
-    setRenderBinDetails: function ( num, binName ) {
-        this._binNumber = num;
-        this._binName = binName;
-    },
-    getAttributeMap: function () {
-        return this.attributeMap;
-    },
-    getBinNumber: function () {
-        return this._binNumber;
-    },
-    getBinName: function () {
-        return this._binName;
-    },
-    setBinNumber: function ( binNum ) {
-        this._binNumber = binNum;
-    },
-    setBinName: function ( binName ) {
-        this._binName = binName;
-    },
-    getAttributeList: function () {
-        var attributeMap = this.attributeMap;
-        var attributeMapKeys = attributeMap.getKeys();
-
-        var l = attributeMapKeys.length;
-        var list = [];
-        for ( var i = 0; i < l; i++ ) {
-            list.push( attributeMap[ attributeMapKeys[ i ] ] );
-        }
-        return list;
-    },
-    setShaderGeneratorName: function ( generatorName, mask ) {
-        this._shaderGeneratorPair = this.getAttributePair( generatorName, mask );
-    },
-    getShaderGeneratorPair: function () {
-        return this._shaderGeneratorPair;
-    },
-    getShaderGeneratorName: function () {
-        return this._shaderGeneratorPair ? this._shaderGeneratorPair.getShaderGeneratorName() : undefined;
-    },
-    releaseGLObjects: function () {
-        for ( var i = 0, j = this.textureAttributeMapList.length; i < j; i++ ) {
-            this.getTextureAttribute( i, 'Texture' ).releaseGLObjects();
-        }
-        var list = this.getAttributeList();
-        for ( i = 0, j = list.length; i < j; i++ ) {
-            // Remove only if we have releaseGLObject method.
-            if ( list[ i ]._object.releaseGLObjects ) {
-                list[ i ]._object.releaseGLObjects();
+        setRenderBinDetails: function(num, binName) {
+            this._binNumber = num;
+            this._binName = binName;
+        },
+        getAttributeMap: function() {
+            // not efficieant at all but not really critique
+            var obj = {};
+            for (var i = 0, l = this._attributeArray.length; i < l; i++) {
+                var attributePair = this._attributeArray[i];
+                if (!attributePair) continue;
+                var attribute = attributePair.getAttribute();
+                obj[attribute.getTypeMember()] = attributePair;
             }
+            return obj;
+        },
+        getBinNumber: function() {
+            return this._binNumber;
+        },
+        getBinName: function() {
+            return this._binName;
+        },
+        setBinNumber: function(binNum) {
+            this._binNumber = binNum;
+        },
+        setBinName: function(binName) {
+            this._binName = binName;
+        },
+        getAttributeList: function() {
+            var attributeArray = this._attributeArray;
+            var list = [];
+            for (var i = 0, l = attributeArray.length; i < l; i++) {
+                if (attributeArray[i]) list.push(attributeArray[i]);
+            }
+            return list;
+        },
+        setShaderGeneratorName: function(generatorName, mode) {
+            this._shaderGeneratorPair = this.getAttributePair(
+                generatorName,
+                mode !== undefined ? mode : StateAttribute.ON
+            );
+        },
+        getShaderGeneratorPair: function() {
+            return this._shaderGeneratorPair;
+        },
+        getShaderGeneratorName: function() {
+            return this._shaderGeneratorPair
+                ? this._shaderGeneratorPair.getShaderGeneratorName()
+                : undefined;
+        },
+        releaseGLObjects: function() {
+            for (var i = 0, j = this._textureAttributeArrayList.length; i < j; i++) {
+                var attribute = this.getTextureAttribute(i, 'Texture');
+                if (attribute) attribute.releaseGLObjects();
+            }
+            var list = this.getAttributeList();
+            for (var k = 0, l = list.length; k < l; k++) {
+                // Remove only if we have releaseGLObject method.
+                if (list[k]._object.releaseGLObjects) {
+                    list[k]._object.releaseGLObjects();
+                }
+            }
+        },
+
+        // for internal use, you should not call it directly
+        _setTextureAttribute: function(unit, attributePair) {
+            utils.arrayDense(unit, this._textureAttributeArrayList);
+            if (!this._textureAttributeArrayList[unit]) this._textureAttributeArrayList[unit] = [];
+
+            var index = utils.getOrCreateTextureStateAttributeTypeMemberIndex(
+                attributePair.getAttribute()
+            );
+            utils.arrayDense(index, this._textureAttributeArrayList[unit]);
+
+            this._textureAttributeArrayList[unit][index] = attributePair;
+            this._computeValidTextureUnit();
+        },
+
+        _computeValidTextureUnit: function() {
+            this._activeTextureAttributeUnit.length = 0;
+            this._activeTextureAttribute.length = 0;
+            var textureAttributeArrayList = this._textureAttributeArrayList;
+            for (var i = 0, l = textureAttributeArrayList.length; i < l; i++) {
+                var attributeList = textureAttributeArrayList[i];
+                if (!attributeList || !attributeList.length) continue;
+                var hasValidAttribute = false;
+                for (var j = 0, k = attributeList.length; j < k; j++) {
+                    if (attributeList[j]) {
+                        hasValidAttribute = true;
+
+                        if (this._activeTextureAttribute.indexOf(j) === -1) {
+                            this._activeTextureAttribute.push(j);
+                        }
+                    }
+                }
+
+                if (hasValidAttribute) this._activeTextureAttributeUnit.push(i);
+            }
+        },
+        _computeValidAttribute: function() {
+            this._activeAttribute.length = 0;
+            var attributeArray = this._attributeArray;
+            for (var i = 0, l = attributeArray.length; i < l; i++) {
+                if (attributeArray[i]) this._activeAttribute.push(i);
+            }
+        },
+        // for internal use, you should not call it directly
+        _setAttribute: function(attributePair) {
+            var index = utils.getOrCreateStateAttributeTypeMemberIndex(
+                attributePair.getAttribute()
+            );
+            utils.arrayDense(index, this._attributeArray);
+            this._attributeArray[index] = attributePair;
+            this._computeValidAttribute();
+        },
+        _hasAttribute: function(typeIndex) {
+            if (typeIndex >= this._attributeArray.length) return false;
+            return !!this._attributeArray[typeIndex];
+        },
+        _hasTextureAttribute: function(unit, typeIndex) {
+            if (
+                unit >= this._textureAttributeArrayList.length ||
+                !this._textureAttributeArrayList[unit]
+            )
+                return false;
+            if (typeIndex >= this._textureAttributeArrayList[unit].length) return false;
+            return !!this._textureAttributeArrayList[unit][typeIndex];
         }
-    },
-    _getUniformMap: function () {
-        return this.uniforms;
-    },
+    }),
+    'osg',
+    'StateSet'
+);
 
-    // for internal use, you should not call it directly
-    _setTextureAttribute: function ( unit, attributePair ) {
-
-        if ( this.textureAttributeMapList[ unit ] === undefined ) {
-            this.textureAttributeMapList[ unit ] = new Map();
-        }
-
-        var name = attributePair.getAttribute().getTypeMember();
-        var textureUnitAttributeMap = this.textureAttributeMapList[ unit ];
-
-        textureUnitAttributeMap[ name ] = attributePair;
-        textureUnitAttributeMap.dirty();
-
-    },
-
-    // for internal use, you should not call it directly
-    _setAttribute: function ( attributePair ) {
-
-        var name = attributePair.getAttribute().getTypeMember();
-        this.attributeMap[ name ] = attributePair;
-        this.attributeMap.dirty();
-
-    }
-
-} ), 'osg', 'StateSet' );
-
-module.exports = StateSet;
+export default StateSet;

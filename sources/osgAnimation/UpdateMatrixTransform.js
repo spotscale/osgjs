@@ -1,14 +1,12 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var mat4 = require( 'osg/glMatrix' ).mat4;
-var AnimationUpdateCallback = require( 'osgAnimation/AnimationUpdateCallback' );
-
+import utils from 'osg/utils';
+import { mat4 } from 'osg/glMatrix';
+import AnimationUpdateCallback from 'osgAnimation/AnimationUpdateCallback';
 
 /**
  *  UpdateMatrixTransform
  */
-var UpdateMatrixTransform = function () {
-    AnimationUpdateCallback.call( this );
+var UpdateMatrixTransform = function() {
+    AnimationUpdateCallback.call(this);
 
     // maybe could have a more generic name and used by all AnimationUpdateCallback
     this._stackedTransforms = [];
@@ -18,34 +16,36 @@ var UpdateMatrixTransform = function () {
     this._dirty = false;
 };
 
+utils.createPrototypeObject(
+    UpdateMatrixTransform,
+    utils.objectInherit(AnimationUpdateCallback.prototype, {
+        getStackedTransforms: function() {
+            return this._stackedTransforms;
+        },
 
-UpdateMatrixTransform.prototype = MACROUTILS.objectInherit( AnimationUpdateCallback.prototype, {
+        computeChannels: function() {
+            this._dirty = true;
+            var matrix = this._matrix;
+            mat4.identity(matrix);
+            var transforms = this._stackedTransforms;
 
-    getStackedTransforms: function () {
-        return this._stackedTransforms;
-    },
+            for (var i = 0, l = transforms.length; i < l; i++) {
+                var transform = transforms[i];
+                transform.applyToMatrix(matrix);
+            }
+        },
 
-    computeChannels: function () {
-        this._dirty = true;
-        var matrix = this._matrix;
-        mat4.identity( matrix );
-        var transforms = this._stackedTransforms;
-
-        for ( var i = 0, l = transforms.length; i < l; i++ ) {
-            var transform = transforms[ i ];
-            transform.applyToMatrix( matrix );
+        update: function(node /*, nv */) {
+            mat4.copy(node.getMatrix(), this._matrix);
+            if (this._dirty) {
+                node.dirtyBound();
+                this._dirty = false;
+            }
+            return true;
         }
-    },
+    }),
+    'osgAnimation',
+    'UpdateMatrixTransform'
+);
 
-    update: function ( node /*, nv */ ) {
-        mat4.copy( node.getMatrix(), this._matrix );
-        if ( this._dirty ) {
-            node.dirtyBound();
-            this._dirty = false;
-        }
-        return true;
-    }
-
-} );
-
-module.exports = UpdateMatrixTransform;
+export default UpdateMatrixTransform;

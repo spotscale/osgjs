@@ -1,9 +1,9 @@
 'use strict';
 
-var WebGLCaps = require( 'osg/WebGLCaps' );
-var DrawArrays = require( 'osg/DrawArrays' );
-var MACROUTILS = require( 'osg/Utils' );
-var notify = require( 'osg/notify' );
+import WebGLCaps from 'osg/WebGLCaps';
+import DrawArrays from 'osg/DrawArrays';
+import utils from 'osg/utils';
+import notify from 'osg/notify';
 
 /**
  * DrawArrays manage rendering of indexed primitives
@@ -11,35 +11,38 @@ var notify = require( 'osg/notify' );
  */
 var DrawArraysInstanced = function ( mode, first, count, numInstances ) {
     DrawArrays.call( this, mode, first, count );
-    this._numInstances = numInstances;
-    this._extension = undefined;
+    this.numInstances = numInstances;
+    this.extension = undefined;
 };
 
 /** @lends DrawArrays.prototype */
-DrawArraysInstanced.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( DrawArrays.prototype, {
-
-    draw: function ( state ) {
-        if ( this._count === 0 )
-            return;
-        var gl = state.getGraphicContext();
-        if ( !this._extension ) {
-            this._extension = WebGLCaps.instance( gl ).getWebGLExtension( 'ANGLE_instanced_arrays' );
-            if ( !this._extension ) {
-                notify.error( 'Your browser does not support instanced arrays extension' );
+utils.createPrototypeNode(
+    DrawArraysInstanced,
+    utils.objectInherit(DrawArrays.prototype, {
+        draw: function ( state ) {
+            if ( this.count === 0 )
                 return;
+            //var gl = state.getGraphicContext();
+            if ( !this.extension ) {
+                this.extension = WebGLCaps.instance().getWebGLExtension( 'ANGLE_instanced_arrays' );
+                if ( !this.extension ) {
+                    notify.error( 'Your browser does not support instanced arrays extension' );
+                    return;
+                }
             }
+            this.extension.drawArraysInstancedANGLE( this.mode, this.first, this.count, this.numInstances );
+        },
+
+        setNumPrimitives: function ( numPrimitives ) {
+            this.numPrimitives = numPrimitives;
+        },
+
+        getNumPrimitives: function () {
+            return this.numPrimitives;
         }
-        this._extension.drawArraysInstancedANGLE( this._mode, this._first, this._count, this._numInstances );
-    },
+    }),
+    'osg',
+    'DrawArraysInstanced'
+);
 
-    setNumPrimitives: function ( numPrimitives ) {
-        this._numPrimitives = numPrimitives;
-    },
-
-    getNumPrimitives: function () {
-        return this._numPrimitives;
-    }
-
-} ) );
-
-module.exports = DrawArraysInstanced;
+export default DrawArraysInstanced;

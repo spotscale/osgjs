@@ -1,21 +1,24 @@
-'use strict';
-var MACROUTILS = require( 'osg/Utils' );
-var Node = require( 'osg/Node' );
-var mat4 = require( 'osg/glMatrix' ).mat4;
+import utils from 'osg/utils';
+import Node from 'osg/Node';
+import { mat4 } from 'osg/glMatrix';
 
-var Projection = function () {
-    Node.call( this );
+var Projection = function() {
+    Node.call(this);
     this.projection = mat4.create();
 };
-Projection.prototype = MACROUTILS.objectInherit( Node.prototype, {
-    getProjectionMatrix: function () {
-        return this.projection;
-    },
-    setProjectionMatrix: function ( m ) {
-        this.projection = m;
-    }
-} );
 
-MACROUTILS.setTypeID( Projection );
+utils.createPrototypeNode(
+    Projection,
+    utils.objectInherit(Node.prototype, {
+        getProjectionMatrix: function() {
+            return this.projection;
+        },
+        setProjectionMatrix: function(m) {
+            this.projection = m;
+        }
+    }),
+    'osg',
+    'Projection'
+);
 
-module.exports = Projection;
+export default Projection;

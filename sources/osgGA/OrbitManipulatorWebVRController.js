@@ -1,15 +1,19 @@
-'use strict';
+import Controller from 'osgGA/Controller';
+import utils from 'osg/utils';
 
-var OrbitManipulatorWebVRController = function ( manipulator ) {
-    this._manipulator = manipulator;
+var OrbitManipulatorWebVRController = function(manipulator) {
+    Controller.call(this, manipulator);
     this.init();
 };
 
-OrbitManipulatorWebVRController.prototype = {
-    init: function () {},
-    update: function ( q, position ) {
-        this._manipulator.setPoseVR( q, position );
-    }
-};
+utils.createPrototypeObject(
+    OrbitManipulatorWebVRController,
+    utils.objectInherit(Controller.prototype, {
+        init: function() {},
+        update: function(q, position) {
+            this._manipulator.setPoseVR(q, position);
+        }
+    })
+);
 
-module.exports = OrbitManipulatorWebVRController;
+export default OrbitManipulatorWebVRController;

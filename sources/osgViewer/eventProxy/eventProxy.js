@@ -1,15 +1,12 @@
-'use strict';
-var GamePad = require( 'osgViewer/eventProxy/GamePad' );
-var HammerOsg = require( 'osgViewer/eventProxy/Hammer' );
-var LeapMotion = require( 'osgViewer/eventProxy/LeapMotion' );
-var StandardMouseKeyboard = require( 'osgViewer/eventProxy/StandardMouseKeyboard' );
-var WebVR = require( 'osgViewer/eventProxy/WebVR' );
-var DeviceOrientation = require( 'osgViewer/eventProxy/DeviceOrientation' );
+import GamePad from 'osgViewer/eventProxy/GamePad';
+import HammerOsg from 'osgViewer/eventProxy/Hammer';
+import StandardMouseKeyboard from 'osgViewer/eventProxy/StandardMouseKeyboard';
+import WebVR from 'osgViewer/eventProxy/WebVR';
+import DeviceOrientation from 'osgViewer/eventProxy/DeviceOrientation';
 
-module.exports = {
+export default {
     GamePad: GamePad,
     Hammer: HammerOsg,
-    LeapMotion: LeapMotion,
     StandardMouseKeyboard: StandardMouseKeyboard,
     WebVR: WebVR,
     DeviceOrientation: DeviceOrientation

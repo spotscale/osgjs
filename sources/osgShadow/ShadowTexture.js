@@ -1,11 +1,8 @@
-'use strict';
-var Map = require( 'osg/Map' );
-var Notify = require( 'osg/notify' );
-var Texture = require( 'osg/Texture' );
-var Uniform = require( 'osg/Uniform' );
-var MACROUTILS = require( 'osg/Utils' );
-var vec4 = require( 'osg/glMatrix' ).vec4;
-
+import notify from 'osg/notify';
+import Texture from 'osg/Texture';
+import Uniform from 'osg/Uniform';
+import utils from 'osg/utils';
+import { vec4 } from 'osg/glMatrix';
 
 /**
  * ShadowTexture Attribute encapsulate Texture webgl object
@@ -15,124 +12,135 @@ var vec4 = require( 'osg/glMatrix' ).vec4;
  * @class ShadowTexture
  * @inherits StateAttribute
  */
-var ShadowTexture = function () {
-
-    Texture.call( this );
+var ShadowTexture = function() {
+    Texture.call(this);
 
     this._uniforms = {};
     this._mapSize = vec4.create();
     this._renderSize = vec4.create();
     this._lightNumber = -1; // default for a valid cloneType
-
+    this._dirtyHash = true;
+    this._hash = '';
 };
 
 ShadowTexture.uniforms = {};
 /** @lends Texture.prototype */
-ShadowTexture.prototype = MACROUTILS.objectLibraryClass( MACROUTILS.objectInherit( Texture.prototype, {
+utils.createPrototypeStateAttribute(
+    ShadowTexture,
+    utils.objectInherit(Texture.prototype, {
+        cloneType: function() {
+            return new ShadowTexture();
+        },
+        invalidate: function() {
+            Texture.prototype.invalidate.call(this);
+            this.dirty();
+        },
+        hasLightNumber: function(lightNum) {
+            return this._lightNumber === lightNum;
+        },
 
-    cloneType: function () {
-        return new ShadowTexture();
-    },
-    hasLightNumber: function ( lightNum ) {
-        return this._lightNumber === lightNum;
-    },
-    setLightNumber: function ( lun ) {
-        this._lightNumber = lun;
-    },
-    getLightNumber: function () {
-        return this._lightNumber;
-    },
+        setLightNumber: function(lun) {
+            this._lightNumber = lun;
+            this._dirtyHash = true;
+        },
 
-    getUniformName: function ( name ) {
-        var prefix = 'Shadow_' + this.getType() + this._lightNumber.toString();
-        return 'u' + prefix + '_' + name;
-    },
+        getLightNumber: function() {
+            return this._lightNumber;
+        },
 
-    getVaryingName: function ( name ) {
-        var prefix = this.getType() + this._lightNumber.toString();
-        return 'v' + prefix + '_' + name;
-    },
+        getUniformName: function(name) {
+            var prefix = 'Shadow_' + this.getType() + this._lightNumber.toString();
+            return 'u' + prefix + '_' + name;
+        },
 
-    getOrCreateUniforms: function ( unit ) {
-        // uniform are once per CLASS attribute, not per instance
-        var obj = ShadowTexture;
+        setInternalFormatType: function(value) {
+            Texture.prototype.setInternalFormatType.call(this, value);
+            this._dirtyHash = true;
+        },
 
-        Notify.assert( unit !== undefined );
-        Notify.assert( this._lightNumber !== -1 );
+        getOrCreateUniforms: function(unit) {
+            // uniform are once per CLASS attribute, not per instance
+            var obj = ShadowTexture;
 
-        if ( obj.uniforms[ unit ] !== undefined ) return obj.uniforms[ unit ];
+            notify.assert(unit !== undefined);
+            notify.assert(this._lightNumber !== -1);
 
-        var uniforms = {
-            ViewMatrix: Uniform.createMat4( this.getUniformName( 'viewMatrix' ) ),
-            ProjectionMatrix: Uniform.createMat4( this.getUniformName( 'projectionMatrix' ) ),
-            DepthRange: Uniform.createFloat4( this.getUniformName( 'depthRange' ) ),
-            MapSize: Uniform.createFloat4( this.getUniformName( 'mapSize' ) ),
-            RenderSize: Uniform.createFloat4( this.getUniformName( 'renderSize' ) )
-        };
+            if (obj.uniforms[unit] !== undefined) return obj.uniforms[unit];
 
-        // Dual Uniform of texture, needs:
-        // - Sampler (type of texture)
-        // - Int (texture unit)
-        // tells Shader Program where to find it
-        var name = 'Texture' + unit;
-        var uniform = Uniform.createInt1( unit, name );
-        uniforms[ name ] = uniform;
+            var uniforms = (obj.uniforms[unit] = {
+                ViewMatrix: Uniform.createMat4(this.getUniformName('viewMatrix')),
+                ProjectionMatrix: Uniform.createMat4(this.getUniformName('projectionMatrix')),
+                DepthRange: Uniform.createFloat4(this.getUniformName('depthRange')),
+                MapSize: Uniform.createFloat4(this.getUniformName('mapSize')),
+                RenderSize: Uniform.createFloat4(this.getUniformName('renderSize'))
+            });
 
-        // Per Class Uniform Cache
-        obj.uniforms[ unit ] = new Map( uniforms );
+            // Dual Uniform of texture, needs:
+            // - Sampler (type of texture)
+            // - Int (texture unit)
+            // tells Shader Program where to find it
+            var name = 'Texture' + unit;
+            var uniform = Uniform.createInt1(unit, name);
+            uniforms[name] = uniform;
 
-        return obj.uniforms[ unit ];
-    },
-    setViewMatrix: function ( viewMatrix ) {
-        this._viewMatrix = viewMatrix;
-    },
+            return obj.uniforms[unit];
+        },
 
-    setProjectionMatrix: function ( projectionMatrix ) {
-        this._projectionMatrix = projectionMatrix;
-    },
+        setViewMatrix: function(viewMatrix) {
+            this._viewMatrix = viewMatrix;
+        },
 
-    setDepthRange: function ( depthRange ) {
-        this._depthRange = depthRange;
-    },
+        setProjectionMatrix: function(projectionMatrix) {
+            this._projectionMatrix = projectionMatrix;
+        },
 
-    setTextureSize: function ( w, h ) {
-        Texture.prototype.setTextureSize.call( this, w, h );
-        this.dirty();
-        this._mapSize[ 0 ] = w;
-        this._mapSize[ 1 ] = h;
-        this._mapSize[ 2 ] = 1.0 / w;
-        this._mapSize[ 3 ] = 1.0 / h;
+        setDepthRange: function(depthRange) {
+            this._depthRange = depthRange;
+        },
 
-        this._renderSize[ 0 ] = w;
-        this._renderSize[ 1 ] = h;
-        this._renderSize[ 2 ] = 1.0 / w;
-        this._renderSize[ 3 ] = 1.0 / h;
-    },
+        setTextureSize: function(w, h) {
+            Texture.prototype.setTextureSize.call(this, w, h);
+            this.dirty();
+            this._mapSize[0] = w;
+            this._mapSize[1] = h;
+            this._mapSize[2] = 1.0 / w;
+            this._mapSize[3] = 1.0 / h;
 
-    apply: function ( state, texNumber ) {
+            this._renderSize[0] = w;
+            this._renderSize[1] = h;
+            this._renderSize[2] = 1.0 / w;
+            this._renderSize[3] = 1.0 / h;
+        },
 
-        // Texture stuff: call parent class method
-        Texture.prototype.apply.call( this, state, texNumber );
+        apply: function(state, texNumber) {
+            // Texture stuff: call parent class method
+            Texture.prototype.apply.call(this, state, texNumber);
 
-        if ( this._lightNumber === -1 )
-            return;
+            if (this._lightNumber === -1) return;
 
-        // update Uniforms
-        var uniformMap = this.getOrCreateUniforms( texNumber );
-        uniformMap.ViewMatrix.setMatrix4( this._viewMatrix );
-        uniformMap.ProjectionMatrix.setMatrix4( this._projectionMatrix );
-        uniformMap.DepthRange.setFloat4( this._depthRange );
-        uniformMap.MapSize.setFloat4( this._mapSize );
-        uniformMap.RenderSize.setFloat4( this._renderSize );
+            // update Uniforms
+            var uniformMap = this.getOrCreateUniforms(texNumber);
+            uniformMap.ViewMatrix.setMatrix4(this._viewMatrix);
+            uniformMap.ProjectionMatrix.setMatrix4(this._projectionMatrix);
+            uniformMap.DepthRange.setFloat4(this._depthRange);
+            uniformMap.MapSize.setFloat4(this._mapSize);
+            uniformMap.RenderSize.setFloat4(this._renderSize);
+        },
 
-    },
+        getHash: function() {
+            if (!this._dirtyHash) return this._hash;
 
-    getHash: function () {
-        return this.getTypeMember() + '_' + this._lightNumber + '_' + this._type;
-    }
+            this._hash = this._computeInternalHash();
+            this._dirtyHash = false;
+            return this._hash;
+        },
 
-} ), 'osgShadow', 'ShadowTexture' );
+        _computeInternalHash: function() {
+            return this.getTypeMember() + '_' + this._lightNumber + '_' + this._type;
+        }
+    }),
+    'osgShadow',
+    'ShadowTexture'
+);
 
-MACROUTILS.setTypeID( ShadowTexture );
-
-module.exports = ShadowTexture;
+export default ShadowTexture;

@@ -1,84 +1,73 @@
-'use strict';
-var Hammer = require( 'hammer' );
+import Hammer from 'hammer';
 
-
-var HammerController = function ( viewer ) {
+var HammerController = function(viewer) {
     this._enable = true;
     this._viewer = viewer;
     this._type = 'Hammer';
 
     this._eventNode = undefined;
-
 };
 
 HammerController.prototype = {
-
-    setEnable: function ( bool ) {
+    setEnable: function(bool) {
         this._enable = bool;
     },
 
-    getEnable: function () {
+    getEnable: function() {
         return this._enable;
     },
 
-    init: function ( options ) {
+    getHammer: function() {
+        return this._hammer;
+    },
 
-        /*jshint camelcase: false */
-
-        var deviceOptions = {
-            prevent_default: true,
-            drag_max_touches: 2,
-            transform_min_scale: 0.08,
-            transform_min_rotation: 180,
-            transform_always_block: true,
-            hold: false,
-            release: false,
-            swipe: false,
-            tap: false
-        };
-        /*jshint camelcase: true */
-
+    init: function(options) {
         this._eventNode = options.eventNode;
+        if (this._eventNode) {
+            this._hammer = new Hammer.Manager(this._eventNode);
 
-        if ( this._eventNode ) {
+            // defaults: { event: 'pan', pointers: 1, direction: Hammer.DIRECTION_HORIZONTAL, threshold: 10 }
+            this._hammer.add(new Hammer.Pan());
 
-            this._hammer = new Hammer( this._eventNode, deviceOptions );
-
-            if ( options.getBoolean( 'scrollwheel' ) === false )
-                this._hammer.get( 'pinch' ).set( {
-                    enable: false
-                } );
-            else
-                this._hammer.get( 'pinch' ).set( {
-                    enable: true
-                } );
-
+            if (options.getBoolean('scrollwheel')) {
+                //defaults: { event: 'pinch', pointers: 2, threshold: 0 }
+                this._hammer.add(new Hammer.Pinch());
+            }
         }
     },
 
-    isValid: function () {
-        if ( this._enable && this._viewer.getManipulator() && this._viewer.getManipulator().getControllerList()[ this._type ] )
-            return true;
-        return false;
+    isValid: function() {
+        if (!this._enable) return false;
+
+        var manipulator = this._viewer.getManipulator();
+        if (!manipulator) return false;
+
+        var controller = manipulator.getControllerList()[this._type];
+        if (!controller || !controller.isEnabled()) return false;
+
+        return true;
     },
-    getManipulatorController: function () {
-        return this._viewer.getManipulator().getControllerList()[ this._type ];
+
+    getManipulatorController: function() {
+        var manip = this._viewer.getManipulator();
+        return manip && manip.getControllerList()[this._type];
     },
 
     // use the update to set the input device to mouse controller
     // it's needed to compute size
-    update: function () {
-        if ( !this.isValid() )
-            return;
+    update: function() {
+        var isValid = this.isValid();
+        var manip = this.getManipulatorController();
+        if (manip) manip.setValid(isValid);
+
+        if (!isValid) return;
 
         // we pass directly hammer object
-        this.getManipulatorController().setEventProxy( this._hammer );
+        this.getManipulatorController().setEventProxy(this._hammer);
     },
-    remove: function () {
-        if ( !this.isValid() )
-            return;
-        this.getManipulatorController().removeEventProxy( this._hammer );
+    remove: function() {
+        if (!this.isValid()) return;
+        this.getManipulatorController().removeEventProxy(this._hammer);
     }
-
 };
-module.exports = HammerController;
+export default HammerController;

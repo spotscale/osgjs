@@ -6,15 +6,15 @@
 
     var OSG = window.OSG;
     var osg = OSG.osg;
-    var osgViewer = OSG.osgViewer;
     var osgDB = OSG.osgDB;
+    var ExampleOSGJS = window.ExampleOSGJS;
+    
     var Example = function () {
-        this._viewer = undefined;
+        ExampleOSGJS.call(this);
         this._nInstances = 1000000;
     };
 
-    Example.prototype = {
-
+    Example.prototype = osg.objectInherit(ExampleOSGJS.prototype, {
         createProgram: function () {
             var vertexShader = [
                 '',
@@ -54,7 +54,7 @@
         },
 
         createOffsets: function ( value ) {
-            var offsets = [];
+            var offsets = new Float32Array( 3*value );
             for ( var i = 0, l = value; i < l; i++ ) {
                 offsets[ 3 * i ] = Math.random() * 8000;
                 offsets[ 3 * i + 1 ] = Math.random() * 8000;
@@ -110,8 +110,8 @@
         },
 
         computeBoundCallback: function ( boundingbox ) {
-            boundingbox.expandByvec3( osg.vec3.fromValues( -0, 0, 0 ) );
-            boundingbox.expandByvec3( osg.vec3.fromValues( 8000, 8000, 8000 ) );
+            boundingbox.expandByVec3( osg.vec3.fromValues( -0, 0, 0 ) );
+            boundingbox.expandByVec3( osg.vec3.fromValues( 8000, 8000, 8000 ) );
         },
 
 
@@ -128,9 +128,10 @@
 
             g.getOrCreateStateSet().setTextureAttributeAndModes( 0, texture );
             g.getOrCreateStateSet().addUniform( osg.Uniform.createInt1( 0, 'Texture0' ) );
-
-            var offsetBuffer = new osg.BufferArray( 'ARRAY_BUFFER', this.createOffsets( this._nInstances ), 3 );
-            g.getAttributes().Offset = offsetBuffer;
+            g.setVertexAttribArray(
+                'Offset',
+                new osg.BufferArray(osg.BufferArray.ARRAY_BUFFER, this.createOffsets( this._nInstances ), 3 )
+            );
             // Set attribute divisors
             g.setAttribArrayDivisor( 'Vertex', 0 );
             g.setAttribArrayDivisor( 'Offset', 1 );
@@ -138,35 +139,28 @@
             var indices = this.createIndices();
             // We need to compute our own bounding volume as the CullVisitor is not aware of the instances bounding volume.
             g.setComputeBoundingBoxCallback( this.computeBoundCallback );
-            g.getPrimitives()[ 0 ] = new osg.DrawElementsInstanced( osg.PrimitiveSet.TRIANGLES, new osg.BufferArray( 'ELEMENT_ARRAY_BUFFER', indices, 1 ), this._nInstances );
+            g.getPrimitives()[ 0 ] = new osg.DrawElementsInstanced( osg.primitiveSet.TRIANGLES, new osg.BufferArray( osg.BufferArray.ELEMENT_ARRAY_BUFFER, indices, 1 ), this._nInstances );
             return g;
         },
 
         createScene: function () {
-            var root = new osg.Node();
-            root.addChild( this.createCubes() );
-            return root;
+            var scene = new osg.Node();
+            scene.addChild( this.createCubes() );
+            
+            this.getRootNode().addChild(scene);
+
+            this._viewer.getManipulator().setNode(scene);
+            this._viewer.getManipulator().computeHomePosition();
         },
+    });
 
-        run: function () {
-
-            var canvas = document.getElementById( 'View' );
-
-            this._viewer = new osgViewer.Viewer( canvas );
-            this._viewer.init();
-            this._viewer.setupManipulator();
-            this._viewer.setSceneData( this.createScene() );
-            var bbox = this._viewer.getSceneData().getBoundingBox();
-            this._viewer.getManipulator().setTarget( bbox.center( osg.vec3.create() ) );
-            this._viewer.getManipulator().setDistance( bbox.radius() * 2.5 );
-            this._viewer.run();
+    window.addEventListener(
+        'load',
+        function () {
+          var example = new Example();
+          example.run();
+          window.example = example;
         },
-
-    };
-
-    window.addEventListener( 'load', function () {
-        var example = new Example();
-        example.run();
-    }, true );
-
-} )();
+        true
+    );
+})();
