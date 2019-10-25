@@ -320,35 +320,72 @@ osgWrapper.Geometry = function(input, node) {
     });
 };
 
+function parseLodParameters(jsonObj, lod) {
+    // Parse center Mode
+    if (jsonObj.CenterMode === 'USE_BOUNDING_SPHERE_CENTER') lod.setCenterMode(0);
+    else if (jsonObj.CenterMode === 'UNION_OF_BOUNDING_SPHERE_AND_USER_DEFINED')
+        lod.setCenterMode(2);
+
+    // Parse center and radius
+    lod.setCenter([jsonObj.UserCenter[0], jsonObj.UserCenter[1], jsonObj.UserCenter[2]]);
+    lod.setRadius(jsonObj.UserCenter[3]);
+
+    // Parse RangeMode
+    if (jsonObj.RangeMode === 'PIXEL_SIZE_ON_SCREEN') lod.setRangeMode(1);
+}
+
+osgWrapper.Lod = function(input, lod) {
+    var jsonObj = input.getJSON();
+
+    osgWrapper.Object(input, lod);
+
+    parseLodParameters(jsonObj, lod);
+
+    var queue = [];
+    // For each url, create a function call and add it to the queue
+    if (jsonObj.Children) {
+        for (var i = 0, k = jsonObj.Children.length; i < k; i++) {
+            queue.push(input.setJSON(jsonObj.Children[i]).readObject());
+        }
+    }
+    
+    var o = jsonObj.RangeList;
+    var str;
+    
+    // Need to wait until the stateset and the all the callbacks are resolved
+    return P.all(queue).then(function(queueNodes) {
+        // All the results from P.all are on the argument as an array
+        // Now insert children in the right order
+        var len = queueNodes.length;
+        for (var n = 0; n < len; n++) {
+            str = 'Range ' + n;
+            var v = o[str];
+            lod.addChild(queueNodes[n], v[0], v[1]);
+        }
+        return lod;
+    });
+};
+
 osgWrapper.PagedLOD = function(input, plod) {
     var jsonObj = input.getJSON();
 
     osgWrapper.Object(input, plod);
-    // Parse center Mode
-    if (jsonObj.CenterMode === 'USE_BOUNDING_SPHERE_CENTER') plod.setCenterMode(0);
-    else if (jsonObj.CenterMode === 'UNION_OF_BOUNDING_SPHERE_AND_USER_DEFINED')
-        plod.setCenterMode(2);
-
-    // Parse center and radius
-    plod.setCenter([jsonObj.UserCenter[0], jsonObj.UserCenter[1], jsonObj.UserCenter[2]]);
-    plod.setRadius(jsonObj.UserCenter[3]);
-
-    // Parse RangeMode
-    if (jsonObj.RangeMode === 'PIXEL_SIZE_ON_SCREEN') plod.setRangeMode(1);
-
-    var str;
+    
+    parseLodParameters(jsonObj, plod);
 
     // Parse Ranges
     var o = jsonObj.RangeList;
-
+    var str;
     for (var i = 0; i < window.Object.keys(o).length; i++) {
         str = 'Range ' + i;
         var v = o[str];
         plod.setRange(i, v[0], v[1]);
     }
+
     // Parse Files
-    o = jsonObj.RangeDataList;
-    for (i = 0; i < window.Object.keys(o).length; i++) {
+    var o = jsonObj.RangeDataList;
+    var str;
+    for (var i = 0; i < window.Object.keys(o).length; i++) {
         str = 'File ' + i;
         plod.setFileName(i, o[str]);
     }
@@ -367,7 +404,7 @@ osgWrapper.PagedLOD = function(input, plod) {
     return P.all(queue).then(function(queueNodes) {
         // All the results from P.all are on the argument as an array
         var len = queueNodes.length;
-        for (i = 0; i < len; i++) plod.addChildNode(queueNodes[i]);
+        for (var i = 0; i < len; i++) plod.addChildNode(queueNodes[i]);
         return plod;
     });
 };
