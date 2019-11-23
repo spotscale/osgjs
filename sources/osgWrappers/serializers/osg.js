@@ -219,6 +219,7 @@ osgWrapper.Texture = function(input, texture) {
     if (jsonObj.MagFilter) texture.setMagFilter(jsonObj.MagFilter);
     if (jsonObj.WrapT) texture.setWrapT(jsonObj.WrapT);
     if (jsonObj.WrapS) texture.setWrapS(jsonObj.WrapS);
+    if (jsonObj.MaxAnisotropy) texture.setMaxAnisotropy(jsonObj.MaxAnisotropy);
 
     // no file return dummy texture
     var file = jsonObj.File;
