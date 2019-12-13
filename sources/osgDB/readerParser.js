@@ -133,6 +133,10 @@ ReaderParser.parseSceneGraphDeprecated = function(node) {
         if (wrapS) {
             osgjs.setWrapS(wrapS);
         }
+        var maxAnisotropy = json.MaxAnisotropy || json['max_anisotropy'] || undefined;
+        if (maxAnisotropy) {
+            osgjs.setMaxAnisotropy(maxAnisotropy);
+        }
         var file = getFieldBackwardCompatible('File', json);
         ReaderParser.readImage(file)
             .then(function(img) {
