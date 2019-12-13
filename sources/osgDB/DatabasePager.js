@@ -283,7 +283,7 @@ utils.createPrototypeObject(
             subgraph.accept(this._findPagedLODsVisitor);
         },
 
-        requestNodeFile: function(func, url, node, timestamp, priority) {
+        requestNodeFile: function(func, url, node, timestamp, priority, depth, requiredRange, distance) {
             // Check if we are currently accepting requests.
             if (!this._acceptNewRequests) return undefined;
             // We don't need to determine if the dbrequest is in the queue
@@ -294,6 +294,9 @@ utils.createPrototypeObject(
             dbrequest._url = url;
             dbrequest._timeStamp = timestamp;
             dbrequest._priority = priority;
+            dbrequest._depth = depth;
+            dbrequest._requiredRange = requiredRange;
+            dbrequest._distance = distance;
             this._pendingRequests.push(dbrequest);
             return dbrequest;
         },
