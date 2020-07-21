@@ -798,6 +798,12 @@
                         .getShaderGenerator('default')
                         .getShaderProcessor();
 
+                    if (this.shaderProcessor.hasShader('shadowReceive.glsl')) {
+                      delete this.shaderProcessor._shadersList['shadowReceive.glsl'];
+                      delete this.shaderProcessor._shadersText['shadowReceive.glsl'];
+                      OSG.osgShader.nodeFactory._nodes.delete('ShadowReceive');
+                    }
+
                     this.shaderProcessor.addShaders(this.shaderLib);
                 }
 

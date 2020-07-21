@@ -10,10 +10,14 @@ float shadowReceive(const in bool lighted,
                     const in vec3 normalWorld,
                     const in vec3 vertexWorld,
                     const in sampler2D shadowTexture,
-                    const in vec4 shadowSize,
-                    const in mat4 shadowProjectionMatrix,
-                    const in mat4 shadowViewMatrix,
-                    const in vec4 shadowDepthRange,
+                    const in vec2 shadowSize,
+
+                    const in vec3 shadowProjection,
+                    const in vec4 shadowViewRight,
+                    const in vec4 shadowViewUp,
+                    const in vec4 shadowViewLook,
+
+                    const in vec2 shadowDepthRange,
                     const in float shadowBias) {
 
     // 0 for early out
@@ -37,18 +41,44 @@ float shadowReceive(const in bool lighted,
     vec4 shadowVertexProjected;
     vec2 shadowUV;
     float N_Dot_L;
+    float invDepthRange;
 
     if (!earlyOut) {
 
-        shadowVertexEye =  shadowViewMatrix *  vec4(vertexWorld, 1.0);
+        //shadowVertexEye =  shadowViewMatrix *  vec4(vertexWorld, 1.0);
+        
+        shadowVertexEye.x = dot(shadowViewRight.xyz, vertexWorld.xyz) + shadowViewRight.w;
+        shadowVertexEye.y = dot(shadowViewUp.xyz, vertexWorld.xyz) + shadowViewUp.w;
+        shadowVertexEye.z = dot(shadowViewLook.xyz, vertexWorld.xyz) + shadowViewLook.w;
+        shadowVertexEye.w = 1.0;
 
         vec3 shadowLightDir = vec3(0.0, 0.0, 1.0); // in shadow view light is camera
         vec4 normalFront = vec4(normalWorld, 0.0);
-        shadowNormalEye =  shadowViewMatrix * normalFront;
-        N_Dot_L = dot(shadowNormalEye.xyz, shadowLightDir);
+        //shadowNormalEye =  shadowViewMatrix * normalFront;
+        //N_Dot_L = dot(shadowNormalEye.xyz, shadowLightDir);
+
+        // derivated, only need z.
+        //vec3 shadowLightDir = vec3(0.0, 0.0, 1.0); // in shadow view light is camera
+        //shadowNormalEye =  shadowViewMatrix * normalFront;
+        //shadowNormalEye.x = dot(shadowViewRight.xyz, normalWorld.xyz);
+        //shadowNormalEye.y = dot(shadowViewUp.xyz, normalWorld.xyz);
+        shadowNormalEye.z = dot(shadowViewLook.xyz, normalWorld.xyz);
+        //shadowNormalEye.w = 0.0;
+
+        //N_Dot_L = dot(shadowNormalEye.xyz, shadowLightDir);
+        N_Dot_L = shadowNormalEye.z;
 
         if (!earlyOut) {
-            shadowVertexProjected = shadowProjectionMatrix * shadowVertexEye;
+            invDepthRange = 1.0 / (shadowDepthRange.y - shadowDepthRange.x);
+        
+            //shadowVertexProjected = shadowProjectionMatrix * shadowVertexEye;
+            
+            // derivated optimisation
+            shadowVertexProjected.x = shadowProjection.x * shadowVertexEye.x;
+            shadowVertexProjected.y = shadowProjection.y * shadowVertexEye.y;
+            shadowVertexProjected.z = - shadowVertexEye.z - (2.0 * shadowDepthRange.x * shadowVertexEye.w);
+            shadowVertexProjected.w = - shadowVertexEye.z;
+
             if (shadowVertexProjected.w < 0.0) {
                 earlyOut = true; // notably behind camera
             }
@@ -66,7 +96,7 @@ float shadowReceive(const in bool lighted,
 
             // most precision near 0, make sure we are near 0 and in [0,1]
             shadowReceiverZ = - shadowVertexEye.z;
-            shadowReceiverZ =  (shadowReceiverZ - shadowDepthRange.x) * shadowDepthRange.w;
+            shadowReceiverZ =  (shadowReceiverZ - shadowDepthRange.x) * invDepthRange;
 
             if(shadowReceiverZ < 0.0) {
                 earlyOut = true; // notably behind camera

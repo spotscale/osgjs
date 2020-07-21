@@ -6,8 +6,15 @@ float shadowReceive(const in bool lighted,
                     const in vec3 vertexWorld,
                     const in sampler2D shadowTexture,
                     const in vec4 shadowSize,
-                    const in mat4 shadowProjectionMatrix,
-                    const in mat4 shadowViewMatrix,
+                    
+                    //const in mat4 shadowProjectionMatrix,
+                    //const in mat4 shadowViewMatrix,
+                    
+                    const in vec3 shadowProjection,
+                    const in vec4 shadowViewRight,
+                    const in vec4 shadowViewUp,
+                    const in vec4 shadowViewLook,
+                    
                     const in vec4 shadowDepthRange,
                     const in float shadowBias) {
 
@@ -35,7 +42,12 @@ float shadowReceive(const in bool lighted,
 
     if (!earlyOut) {
 
-        shadowVertexEye =  shadowViewMatrix *  vec4(vertexWorld, 1.0);
+        //shadowVertexEye =  shadowViewMatrix *  vec4(vertexWorld, 1.0);
+        
+        shadowVertexEye.x = dot(shadowViewRight.xyz, vertexWorld.xyz) + shadowViewRight.w;
+        shadowVertexEye.y = dot(shadowViewUp.xyz, vertexWorld.xyz) + shadowViewUp.w;
+        shadowVertexEye.z = dot(shadowViewLook.xyz, vertexWorld.xyz) + shadowViewLook.w;
+        shadowVertexEye.w = 1.0;
 
         vec3 shadowLightDir = vec3(0.0, 0.0, 1.0); // in shadow view light is camera
         vec4 normalFront = vec4(normalWorld, 0.0);
@@ -43,7 +55,14 @@ float shadowReceive(const in bool lighted,
         N_Dot_L = dot(shadowNormalEye.xyz, shadowLightDir);
 
         if (!earlyOut) {
-            shadowVertexProjected = shadowProjectionMatrix * shadowVertexEye;
+            //shadowVertexProjected = shadowProjectionMatrix * shadowVertexEye;
+            
+            // derivated optimisation
+            shadowVertexProjected.x = shadowProjection.x * viewShadow.x;
+            shadowVertexProjected.y = shadowProjection.y * viewShadow.y;
+            shadowVertexProjected.z = - viewShadow.z - (2.0 * shadowDepthRange.x * viewShadow.w);
+            shadowVertexProjected.w = - viewShadow.z;
+            
             if (shadowVertexProjected.w < 0.0) {
                 earlyOut = true; // notably behind camera
             }
