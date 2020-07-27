@@ -28,12 +28,16 @@ Options.getOptionsURL = function() {
 
     urlOptions = {};
 
-    if (!window.location.search) return urlOptions;
+    var query = window.location.search.substring(1);
+    if (query === '' || query === undefined) {
+      query = window.location.hash.split('?')[1];
+    }
+    if (query === undefined) return urlOptions;
 
     var vars = [];
     var hash;
     // slice(1) to remove leading '?'
-    var hashes = window.location.search.slice(1).split('&');
+    var hashes = query.split('&');
     for (var i = 0; i < hashes.length; i++) {
         hash = hashes[i].split('=');
         var element = hash[0];
