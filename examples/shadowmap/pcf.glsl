@@ -40,8 +40,8 @@ float getShadowPCF(
 
     if (pcf <= 9.0) return res / 9.0;
 
-    float dx02 = 2.0*dx0
-    float dy02 = 2.0*dy0
+    float dx02 = 2.0*dx0;
+    float dy02 = 2.0*dy0;
     float dx2 = 2.0*dx1;
     float dy2 = 2.0*dy1;
 
