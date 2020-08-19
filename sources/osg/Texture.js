@@ -426,6 +426,11 @@ utils.createPrototypeStateAttribute(
             },
 
             releaseGLObjects: function() {
+                if (this._cached) {
+                  // Avoid releasing if this monkey-patched flag from swea is true
+                  return;
+                }
+              
                 if (
                     this._textureObject !== undefined &&
                     this._textureObject !== null &&
@@ -702,7 +707,7 @@ utils.createPrototypeStateAttribute(
                                 this._type,
                                 imi.getImage()
                             );
-                    }
+                        }
                 } else {
                     // automatic mipmap
                     gl.generateMipmap(target);
@@ -721,7 +726,7 @@ utils.createPrototypeStateAttribute(
 
             applyTexImage2D: function(gl) {
                 var args = Array.prototype.slice.call(arguments, 1);
-
+                
                 // use parameters of pixel store
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this._flipY);
                 gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, this._colorSpaceConversion);
