@@ -74,7 +74,7 @@ utils.createPrototypeObject(
             this._initInputSource(InputSourceKeyboard, 'Keyboard', document, options);
 
             // touch inputs, Only activate them if we have a touch device in order to fix problems with IE11
-            if ('ontouchstart' in window) {
+            if ('ontouchstart' in window || window.navigator.msPointerEnabled || window.navigator.maxTouchPoints > 1) {
                 this._initInputSource(InputSourceTouchScreen, 'TouchScreen', canvas, options);
             }
 
