@@ -564,7 +564,17 @@ utils.createPrototypeStateAttribute(
 
                     this._imageFormat = imageFormat;
                 } else {
-                    this._imageFormat = Texture.RGBA;
+                    if (this._image) {
+                        if (this._image._format) {
+                            this._imageFormat = this._image._format;
+                            this.setInternalFormat(this._image._format);
+                        } else {
+                            this._imageFormat = Texture.RGBA;
+                        }
+
+                    } else {
+                        this._imageFormat = Texture.RGBA;
+                    }
                 }
             },
 
