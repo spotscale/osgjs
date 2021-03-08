@@ -25,6 +25,14 @@ var ImageObject = function(image) {
 utils.createPrototypeObject(
     ImageObject,
     utils.objectInherit(Object.prototype, {
+        setFormat: function(format) {
+          this._format = format;
+        },
+        
+        getFormat: function() {
+          return this._format;
+        },
+      
         dirty: function() {
             this._isGreyscale = undefined;
             this._dirty = true;
