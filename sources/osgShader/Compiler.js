@@ -60,28 +60,24 @@ Compiler.setStateAttributeConfig = function(compilerClass, config) {
     compilerClass.validTextureAttributeTypeMember = config.textureAttribute;
 };
 
+
+const attributeNames = [];
+const maxNumLights = 128;
+for (let i = 0; i < maxNumLights; ++i) {
+  attributeNames.push('Light' + i);
+  attributeNames.push('ShadowReceive' + i);
+}
+attributeNames.push('Material');
+attributeNames.push('PointSize');
+attributeNames.push('Billboard');
+attributeNames.push('Morph');
+attributeNames.push('Skinning');
+
 Compiler.setStateAttributeConfig(Compiler, {
-    attribute: [
-        'Light0',
-        'ShadowReceive0',
-        'Light1',
-        'ShadowReceive1',
-        'Light2',
-        'ShadowReceive2',
-        'Light3',
-        'ShadowReceive3',
-        'Light4',
-        'Light5',
-        'Light6',
-        'Light7',
-        'Material',
-        'PointSize',
-        'Billboard',
-        'Morph',
-        'Skinning'
-    ],
+    attribute: attributeNames,
     textureAttribute: ['Texture']
 });
+
 
 Compiler.prototype = utils.extend({}, CompilerVertex, CompilerFragment, {
     constructor: Compiler,
