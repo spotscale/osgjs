@@ -62,7 +62,7 @@ Compiler.setStateAttributeConfig = function(compilerClass, config) {
 
 
 const attributeNames = [];
-const maxNumLights = 127;
+const maxNumLights = 100;
 for (let i = 0; i < maxNumLights; ++i) {
   attributeNames.push('Light' + i);
   attributeNames.push('ShadowReceive' + i);
