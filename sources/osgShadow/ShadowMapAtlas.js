@@ -210,7 +210,13 @@ utils.createPrototypeObject(
         },
 
         getShadowMap: function(lightNum) {
-            return this._shadowMaps[lightNum];
+            for (var i = 0, l = this._shadowMaps.length; i < l; i++) {
+                var shadowMap = this._shadowMaps[i];
+                if (shadowMap.getLightNumber() === lightNum) {
+                    return shadowMap;
+                }
+            }
+            return undefined;
         },
 
         addLight: function(light) {
