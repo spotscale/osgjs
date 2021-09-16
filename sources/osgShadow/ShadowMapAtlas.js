@@ -281,21 +281,21 @@ utils.createPrototypeObject(
         recomputeViewports: function() {
             var numViews = this._shadowMaps.length;
 
-            var viewDivideY = numViews > 2 ? Math.sqrt(2 * Math.ceil(numViews / 2)) : numViews;
+            var viewDivideY = numViews > 2 ? Math.ceil(Math.sqrt(2 * Math.ceil(numViews / 2))) : numViews;
             var viewDivideX = viewDivideY;
-
+            
             var mapSizeX = this._textureSize / viewDivideX;
             var mapSizeY = this._textureSize / viewDivideY;
 
             var numShadowWidth = this._textureSize / mapSizeX;
             var numShadowHeight = this._textureSize / mapSizeY;
-
+            
             for (var i = 0; i < numViews; i++) {
                 var shadowMap = this._shadowMaps[i];
 
                 var x = mapSizeX * (i % numShadowWidth);
                 var y = mapSizeY * Math.floor(i / numShadowHeight);
-
+                
                 if (this._viewportDimension.length <= i) {
                     this._viewportDimension.push(vec4.fromValues(x, y, mapSizeX, mapSizeY));
                 } else {
