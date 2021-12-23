@@ -14,6 +14,9 @@ utils.createPrototypeObject(
             this._delay = 0.15;
             this._stepFactor = 1.0; // meaning radius*stepFactor to move
             this._looking = false;
+            
+            this._stepFactorInterval = [0.01, 4.0];
+            this._stepDeltaFactor = 0.01;
 
             var manager = this._manipulator.getInputManager();
             manager.group(InputGroups.FPS_MANIPULATOR_MOUSEKEYBOARD).addMappings(
@@ -86,8 +89,20 @@ utils.createPrototypeObject(
             this._manipulator.getLookPositionInterpolator().setTarget(ev.canvasX, -ev.canvasY);
         },
 
+        setStepFactor: function(stepFactor) {
+          this._stepFactor = stepFactor;
+        },
+  
+        setStepFactorInterval: function(stepFactorInterval) {
+          this._stepFactorInterval = stepFactorInterval;
+        },
+
+        setStepDeltaFactor: function(stepDeltaFactor) {
+          this._stepDeltaFactor = stepDeltaFactor;
+        },
+
         changeStepFactor: function(ev) {
-            this._stepFactor = Math.min(Math.max(0.001, this._stepFactor + ev.deltaY * 0.01), 4.0);
+            this._stepFactor = Math.min(Math.max(this._stepFactorInterval[0], this._stepFactor + ev.deltaY * this._stepDeltaFactor), this._stepFactorInterval[1]);
             this._manipulator.setStepFactor(this._stepFactor);
         },
 
