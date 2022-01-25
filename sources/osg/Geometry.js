@@ -35,6 +35,7 @@ var Geometry = function() {
     this._instancedArrayMap = undefined;
 
     this._fixNearFar = undefined;
+    this._fixNearFarProjectionMatrix = undefined;
 };
 
 Geometry.enableVAO = true;
@@ -369,9 +370,8 @@ utils.createPrototypeNode(
             if (this._fixNearFar !== undefined) {
               const aspect = state._lastAppliedProjectionMatrix[5] / state._lastAppliedProjectionMatrix[0];
               const fovY = 2.0 * Math.atan(1.0 / state._lastAppliedProjectionMatrix[5]);
-              const newProjectionMatrix = mat4.create();
-              mat4.perspective(newProjectionMatrix, fovY, aspect, this._fixNearFar[0], this._fixNearFar[1]);
-              state.applyProjectionMatrix(newProjectionMatrix);
+              mat4.perspective(this._fixNearFarProjectionMatrix, fovY, aspect, this._fixNearFar[0], this._fixNearFar[1]);
+              state.applyProjectionMatrix(this._fixNearFarProjectionMatrix);
             }
           
             var program = state.getLastProgramApplied();
@@ -482,6 +482,7 @@ utils.createPrototypeNode(
         
         setFixNearFar: function(nearFar) {
             this._fixNearFar = nearFar;
+            this._fixNearFarProjectionMatrix = (this._fixNearFar !== undefined ? mat4.create() : undefined);
         },
         
         getFixNearFar: function() {
