@@ -5,6 +5,8 @@ import WebGLCaps from 'osg/WebGLCaps';
 import DrawElements from 'osg/DrawElements';
 import BufferArrayProxy from 'osg/BufferArrayProxy';
 import VertexArrayObject from 'osg/VertexArrayObject';
+import { mat4 } from 'osg/glMatrix';
+
 /**
  * Geometry manage array and primitives to draw a geometry.
  * @class Geometry
@@ -31,6 +33,8 @@ var Geometry = function() {
     // null means the kdTree builder will skip the kdTree creation
     this._shape = undefined;
     this._instancedArrayMap = undefined;
+
+    this._fixNearFar = undefined;
 };
 
 Geometry.enableVAO = true;
@@ -362,6 +366,14 @@ utils.createPrototypeNode(
         },
 
         drawImplementation: function(state) {
+            if (this._fixNearFar !== undefined) {
+              const aspect = state._lastAppliedProjectionMatrix[5] / state._lastAppliedProjectionMatrix[0];
+              const fovY = 2.0 * Math.atan(1.0 / state._lastAppliedProjectionMatrix[5]);
+              const newProjectionMatrix = mat4.create();
+              mat4.perspective(newProjectionMatrix, fovY, aspect, this._fixNearFar[0], this._fixNearFar[1]);
+              state.applyProjectionMatrix(newProjectionMatrix);
+            }
+          
             var program = state.getLastProgramApplied();
             var prgID = program.getInstanceID();
 
@@ -466,6 +478,14 @@ utils.createPrototypeNode(
             var bb = this.getBoundingBox();
             boundingSphere.expandByBoundingBox(bb);
             return boundingSphere;
+        },
+        
+        setFixNearFar: function(nearFar) {
+            this._fixNearFar = nearFar;
+        },
+        
+        getFixNearFar: function() {
+            return this._fixNearFar;
         }
     }),
     'osg',
