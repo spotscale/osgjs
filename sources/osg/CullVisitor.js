@@ -660,7 +660,7 @@ var geometryApply = function(node) {
 
     var modelview = this.getCurrentModelViewMatrix();
     var bb = node.getBoundingBox();
-    if (this._computeNearFar && node.getFixNearFar() === undefined && bb.valid()) {
+    if (this._computeNearFar && !node.isNearFarControlled() && bb.valid()) {
         if (!this.updateCalculatedNearFar(modelview, node)) {
             return;
         }

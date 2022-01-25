@@ -34,8 +34,8 @@ var Geometry = function() {
     this._shape = undefined;
     this._instancedArrayMap = undefined;
 
-    this._fixNearFar = undefined;
-    this._fixNearFarProjectionMatrix = undefined;
+    this._controlledNearFar = undefined;
+    this._controlledNearFarProjectionMatrix = undefined;
 };
 
 Geometry.enableVAO = true;
@@ -367,11 +367,11 @@ utils.createPrototypeNode(
         },
 
         drawImplementation: function(state) {
-            if (this._fixNearFar !== undefined) {
+            if (this._controlledNearFar !== undefined) {
               const aspect = state._lastAppliedProjectionMatrix[5] / state._lastAppliedProjectionMatrix[0];
               const fovY = 2.0 * Math.atan(1.0 / state._lastAppliedProjectionMatrix[5]);
-              mat4.perspective(this._fixNearFarProjectionMatrix, fovY, aspect, this._fixNearFar[0], this._fixNearFar[1]);
-              state.applyProjectionMatrix(this._fixNearFarProjectionMatrix);
+              mat4.perspective(this._controlledNearFarProjectionMatrix, fovY, aspect, this._controlledNearFar[0], this._controlledNearFar[1]);
+              state.applyProjectionMatrix(this._controlledNearFarProjectionMatrix);
             }
           
             var program = state.getLastProgramApplied();
@@ -480,13 +480,13 @@ utils.createPrototypeNode(
             return boundingSphere;
         },
         
-        setFixNearFar: function(nearFar) {
-            this._fixNearFar = nearFar;
-            this._fixNearFarProjectionMatrix = (this._fixNearFar !== undefined ? mat4.create() : undefined);
+        setControlledNearFar: function(nearFar) {
+            this._controlledNearFar = nearFar;
+            this._controlledNearFarProjectionMatrix = (this._controlledNearFar !== undefined ? mat4.create() : undefined);
         },
         
-        getFixNearFar: function() {
-            return this._fixNearFar;
+        isNearFarControlled: function() {
+            return (this._controlledNearFar !== undefined);
         }
     }),
     'osg',
