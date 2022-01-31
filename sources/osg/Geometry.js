@@ -485,6 +485,10 @@ utils.createPrototypeNode(
             this._controlledNearFarProjectionMatrix = (this._controlledNearFar !== undefined ? mat4.create() : undefined);
         },
         
+        getControlledNearFar: function() {
+          return this._controlledNearFar;
+        },
+        
         isNearFarControlled: function() {
             return (this._controlledNearFar !== undefined);
         }
