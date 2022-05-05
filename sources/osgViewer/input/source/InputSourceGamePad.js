@@ -25,6 +25,10 @@ var InputSourceGamePad = function() {
     window.addEventListener(
         'gamepadconnected',
         function(e) {
+            if (e.gamepad.id.toLowerCase().indexOf('beef') !== -1) {
+                // Not sure why, but a separate 'beef' gamepad ruins everything for the 3DConnexion Space Mouse or Space Navigator
+                return;
+            }
             this._newGamePad(e.gamepad);
             this._onConnectionStateChange(e, 'gamepadconnected');
         }.bind(this)

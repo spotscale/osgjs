@@ -44,6 +44,8 @@ var View = function() {
     renderer.setFrameStamp(this._frameStamp);
     this.getCamera().setRenderer(renderer);
     this.getCamera().setView(this);
+    
+    this._maxWidth = undefined;
 };
 
 View.LightingMode = {
@@ -81,6 +83,10 @@ View.prototype = {
 
     initWebGLCaps: function(gl, force) {
         WebGLCaps.instance(gl, force);
+    },
+
+    setMaxWidth(width) {
+        this._maxWidth = width;
     },
 
     // check Each frame because HTML standard inconsistencies
@@ -121,6 +127,11 @@ View.prototype = {
 
             var widthPixel = Math.floor(clientWidth * devicePixelRatio);
             var heightPixel = Math.floor(clientHeight * devicePixelRatio);
+
+            if (this._maxWidth !== undefined && widthPixel > this._maxWidth) {
+                heightPixel *= (this._maxWidth / widthPixel);
+                widthPixel = this._maxWidth;
+            }
 
             var hasChanged = false;
             if (this._canvasWidth !== widthPixel) {
