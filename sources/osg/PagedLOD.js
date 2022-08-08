@@ -254,6 +254,7 @@ utils.createPrototypeNode(
 
                         var needToLoadChild = false;
                         var lastChildTraversed = -1;
+                        var dbhandler = visitor.getDatabaseRequestHandler();
                         for (var j = 0; j < this._range.length; ++j) {
                             if (
                                 this._range[j][0] <= requiredRange &&
@@ -275,6 +276,13 @@ utils.createPrototypeNode(
                                     needToLoadChild = true;
                                 }
                             }
+                            /*
+                            else if (this._perRangeDataList[j].dbrequest !== undefined) {
+                                // If there is a pending request for this node although we are now far from it, throw it out of the queue
+                                dbhandler.removeRequest(this._databasePath + this._perRangeDataList[j].filename);
+                                this._perRangeDataList[j].dbrequest = undefined;
+                            }
+                            */
                         }
                         if (needToLoadChild) {
                             var numChildren = this.children.length;
@@ -303,13 +311,12 @@ utils.createPrototypeNode(
                                 var group = visitor.nodePath[visitor.nodePath.length - 1];
                                 if (this._perRangeDataList[numChildren].loaded === false) {
                                     this._perRangeDataList[numChildren].loaded = true;
-                                    var dbhandler = visitor.getDatabaseRequestHandler();
                                     this._perRangeDataList[
                                         numChildren
                                     ].dbrequest = dbhandler.requestNodeFile(
                                         this._perRangeDataList[numChildren].function,
-                                        this._databasePath +
-                                            this._perRangeDataList[numChildren].filename,
+                                        //this._databasePath + this._perRangeDataList[this.children.length].filename,
+                                        this._databasePath + this._perRangeDataList[numChildren].filename,
                                         group,
                                         visitor.getFrameStamp().getSimulationTime(),
                                         priority,

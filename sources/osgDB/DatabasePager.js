@@ -277,6 +277,27 @@ utils.createPrototypeObject(
             return this._loading;
         },
 
+        removeRequest: function(url) {
+            var numRequests = this._pendingRequests.length;
+            for (let i = 0; i < numRequests; ++i) {
+                if (this._pendingRequests[i]._url === url) {
+                    --this._downloadingRequestsNumber;
+                    this._pendingRequests.splice(i, 1);
+                    return true;
+                }
+            }
+            
+            numRequests = this._pendingNodes.length;
+            for (let i = 0; i < numRequests; ++i) {
+                if (this._pendingNodes[i]._url === url) {
+                    this._pendingNodes.splice(i, 1);
+                    return true;
+                }
+            }
+            
+            return false;
+        },
+
         registerPagedLODs: function(subgraph, frameNumber) {
             if (!subgraph) return;
             this._findPagedLODsVisitor.set(this._activePagedLODList, frameNumber);

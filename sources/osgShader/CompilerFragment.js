@@ -28,9 +28,10 @@ var CompilerFragment = {
         }
 
         this.getNode('InlineCode')
-            .code('if (length(2.0 * gl_PointCoord - 1.0) > %radius) discard;')
+            .code('%color.r = 1.0; %color.g = 1.0; %color.b = 1.0; %color.a = 1.0; if (length(2.0 * gl_PointCoord - 1.0) > %radius) discard;')
             .inputs({
-                radius: this.getOrCreateConstantOne('float')
+                radius: this.getOrCreateConstantOne('float'),
+                color: color
             })
             .outputs({
                 output: color

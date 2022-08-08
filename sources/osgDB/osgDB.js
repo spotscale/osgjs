@@ -9,6 +9,7 @@ import Registry from 'osgDB/Registry';
 import fileHelper from 'osgDB/fileHelper';
 import requestFile from 'osgDB/requestFile';
 import zlib from 'osgDB/zlib';
+import BinaryDecoder from 'osgDB/BinaryDecoder';
 
 var osgDB = {};
 osgDB.Input = Input;
@@ -20,6 +21,7 @@ osgDB.ObjectWrapper.serializers.osgText = osgTextWrappers;
 osgDB.Registry = Registry;
 osgDB.fileHelper = fileHelper;
 osgDB.requestFile = requestFile;
+osgDB.BinaryDecoder = BinaryDecoder;
 
 utils.objectMix(osgDB, zlib);
 
