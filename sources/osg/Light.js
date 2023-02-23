@@ -310,6 +310,66 @@ utils.createPrototypeStateAttribute(
             uniformMap.diffuse.setFloat4(this._diffuse);
             uniformMap.specular.setFloat4(this._specular);
             uniformMap.ambient.setFloat4(this._ambient);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            var ambientComp = vec4.compare(this._ambient, attr._ambient);
+            if (ambientComp !== 0) {
+                return ambientComp;
+            }
+            var diffuseComp = vec4.compare(this._diffuse, attr._diffuse);
+            if (diffuseComp !== 0) {
+                return diffuseComp;
+            }
+            var specularComp = vec4.compare(this._specular, attr._specular);
+            if (specularComp !== 0) {
+                return specularComp;
+            }
+            var positionComp = vec4.compare(this._position, attr._position);
+            if (positionComp !== 0) {
+                return positionComp;
+            }
+            var directionComp = vec3.compare(this._direction, attr._direction);
+            if (directionComp !== 0) {
+                return directionComp;
+            }
+            var groundComp = vec4.compare(this._ground, attr._ground);
+            if (groundComp !== 0) {
+                return groundComp;
+            }
+            if (this._spotCutoff < attr._spotCutoff) {
+                return -1;
+            }
+            if (this._spotCutoff > attr._spotCutoff) {
+                return 1;
+            }
+            if (this._spotBlend < attr._spotBlend) {
+                return -1;
+            }
+            if (this._spotBlend > attr._spotBlend) {
+                return 1;
+            }
+            var attenuationComp = vec4.compare(this._attenuation, attr._attenuation);
+            if (attenuationComp !== 0) {
+                return attenuationComp;
+            }
+            if (this._lightNumber < attr._lightNumber) {
+                return -1;
+            }
+            if (this._lightNumber > attr._lightNumber) {
+                return 1;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

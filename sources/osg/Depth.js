@@ -59,6 +59,38 @@ utils.createPrototypeStateAttribute(
         },
         apply: function(state) {
             state.applyDepth(this);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._func < attr._func) {
+                return -1;
+            }
+            if (this._func > attr._func) {
+                return 1;
+            }
+            if (this._near < attr._near) {
+                return -1;
+            }
+            if (this._near > attr._near) {
+                return 1;
+            }
+            if (this._far < attr._far) {
+                return -1;
+            }
+            if (this._far > attr._far) {
+                return 1;
+            }
+            if (this._writeMask < attr._writeMask) {
+                return -1;
+            }
+            if (this._writeMask > attr._writeMask) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

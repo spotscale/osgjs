@@ -256,6 +256,175 @@ utils.createPrototypeObject(
         release: function() {
             this._mipmap.length = 0;
             this._imageObject = undefined;
+        },
+
+        // Return -1 if less, 0 if equal and 1 if greater
+        compare: function(img) {
+            if (this._url < img._url) {
+                return -1;
+            }
+            if (this._url > img._url) {
+                return 1;
+            }
+            if (this._width < img._width) {
+                return -1;
+            }
+            if (this._width > img._width) {
+                return 1;
+            }
+            if (this._height < img._height) {
+                return -1;
+            }
+            if (this._height > img._height) {
+                return 1;
+            }
+            if (this._dirty < img._dirty) {
+                return -1;
+            }
+            if (this._dirty > img._dirty) {
+                return 1;
+            }
+            if (this._format < img._format) {
+                return -1;
+            }
+            if (this._format > img._format) {
+                return 1;
+            }
+            if (this._isGreyscale < img._isGreyscale) {
+                return -1;
+            }
+            if (this._isGreyscale > img._isGreyscale) {
+                return 1;
+            }
+
+            var thisImage = this.getImage();
+            var otherImage = img.getImage();
+            if (!thisImage && otherImage) {
+                return -1;
+            }
+            if (thisImage && !otherImage) {
+                return 1;
+            }
+            if (thisImage instanceof window.HTMLCanvasElement && !(otherImage instanceof window.HTMLCanvasElement)) {
+                return -1;
+            }
+            if (!(thisImage instanceof window.HTMLCanvasElement) && otherImage instanceof window.HTMLCanvasElement) {
+                return 1;
+            }
+            if (thisImage instanceof window.HTMLCanvasElement && otherImage instanceof window.HTMLCanvasElement) {
+              // Sorry, no better way
+                if (thisImage.width < otherImage.width) {
+                    return -1;
+                }
+                if (thisImage.width > otherImage.width) {
+                    return 1;
+                }
+                if (thisImage.height < otherImage.height) {
+                    return -1;
+                }
+                if (thisImage.height > otherImage.height) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+            if (thisImage instanceof ImageBitmap && !(otherImage instanceof ImageBitmap)) {
+                return -1;
+            }
+            if (!(thisImage instanceof ImageBitmap) && otherImage instanceof ImageBitmap) {
+                return 1;
+            }
+            if (thisImage instanceof ImageBitmap && otherImage instanceof ImageBitmap) {
+                // Sorry, no better way
+                if (thisImage.width < otherImage.width) {
+                    return -1;
+                }
+                if (thisImage.width > otherImage.width) {
+                    return 1;
+                }
+                if (thisImage.height < otherImage.height) {
+                    return -1;
+                }
+                if (thisImage.height > otherImage.height) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+            if (thisImage instanceof window.HTMLVideoElement && !(otherImage instanceof window.HTMLVideoElement)) {
+                return -1;
+            }
+            if (!(thisImage instanceof window.HTMLVideoElement) && otherImage instanceof window.HTMLVideoElement) {
+                return 1;
+            }
+            if (thisImage instanceof window.HTMLVideoElement && otherImage instanceof window.HTMLVideoElement) {
+                // Sorry, no better way
+                if (thisImage.videoWidth < otherImage.videoWidth) {
+                    return -1;
+                }
+                if (thisImage.videoWidth > otherImage.videoWidth) {
+                    return 1;
+                }
+                if (thisImage.videoHeight < otherImage.videoHeight) {
+                    return -1;
+                }
+                if (thisImage.videoHeight > otherImage.videoHeight) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+            if (thisImage instanceof window.Image && !(otherImage instanceof window.Image)) {
+                return -1;
+            }
+            if (!(thisImage instanceof window.Image) && otherImage instanceof window.Image) {
+                return 1;
+            }
+            if (thisImage instanceof window.Image && otherImage instanceof window.Image) {
+                if (thisImage.width < otherImage.width) {
+                    return -1;
+                }
+                if (thisImage.width > otherImage.width) {
+                    return 1;
+                }
+                if (thisImage.height < otherImage.height) {
+                    return -1;
+                }
+                if (thisImage.height > otherImage.height) {
+                    return 1;
+                }
+                if (thisImage.src < otherImage.src) {
+                    return -1;
+                }
+                if (thisImage.src > otherImage.src) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+            if (thisImage instanceof TypedArray && !(otherImage instanceof TypedArray)) {
+                return -1;
+            }
+            if (!(thisImage instanceof TypedArray) && otherImage instanceof TypedArray) {
+                return 1;
+            }
+            if (thisImage.isTypedArray() && otherImage.isTypedArray()) {
+                // Sorry, no better way
+                if (thisImage.length < otherImage.length) {
+                    return -1;
+                }
+                if (thisImage.length > otherImage.length) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+            return 0;
         }
     }),
     'osg',

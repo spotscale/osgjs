@@ -23,7 +23,22 @@ utils.createPrototypeStateAttribute(
             return this._attributeEnable;
         },
 
-        apply: function() {}
+        apply: function() {},
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._attributeEnable < attr._attributeEnable) {
+                return -1;
+            }
+            if (this._attributeEnable > attr._attributeEnable) {
+                return 1;
+            }
+            return 0;
+        }
+
     }),
     'osg',
     'Billboard'

@@ -44,6 +44,29 @@ utils.createPrototypeStateAttribute(
         // StateAttribute from the shader compilation
         isEnabled: function() {
             return this._enable;
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+            if (!this._shadowReceiveAttribute && attr._shadowReceiveAttribute) {
+                return -1;
+            }
+            if (this._shadowReceiveAttribute && !attr._shadowReceiveAttribute) {
+                return 1;
+            }
+            if (this._shadowReceiveAttribute && attr._shadowReceiveAttribute) {
+                return this._shadowReceiveAttribute.compare(attr._shadowReceiveAttribute);
+            }
+            return 0;
         }
     }),
     'osgShadow',

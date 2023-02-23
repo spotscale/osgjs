@@ -94,6 +94,26 @@ utils.createPrototypeStateAttribute(
             this.getOrCreateUniforms()
                 .uBones.getInternalArray()
                 .set(this._matrixPalette);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+            if (this._boneUniformSize < attr._boneUniformSize) {
+                return -1;
+            }
+            if (this._boneUniformSize > attr._boneUniformSize) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osgAnimation',

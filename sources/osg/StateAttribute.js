@@ -31,6 +31,17 @@ utils.createPrototypeStateAttribute(
         // check other attributes for examples
         getHash: function() {
             return this.getType();
+        },
+        
+        // Return -1 if less, 0 if equal and 1 if greater. Only checks attributeType, override and call this in subclasses!
+        compare: function(attr) {
+            if (this.attributeType < attr.attributeType) {
+                return -1;
+            }
+            if (this.attributeType > attr.attributeType) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

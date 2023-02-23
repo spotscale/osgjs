@@ -521,6 +521,48 @@ utils.createPrototypeStateAttribute(
                         }
                     }
                 }
+            },
+            
+            compare: function(attr) {
+                var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+                if (compareTypes !== 0) {
+                    return compareTypes;
+                }
+                if (!this._vertex && attr._vertex) {
+                    return -1;
+                }
+                if (this._vertex && !attr._vertex) {
+                    return 1;
+                }
+                if (this._vertex && attr._vertex) {
+                    if (this._vertex.getText() < attr._vertex.getText()) {
+                        return -1;
+                    }
+                    if (this._vertex.getText() > attr._vertex.getText()) {
+                        return 1;
+                    }
+                }
+                if (!this._fragment && attr._fragment) {
+                    return -1;
+                }
+                if (this._fragment && !attr._fragment) {
+                    return 1;
+                }
+                if (this._fragment && attr._fragment) {
+                    if (this._fragment.getText() < attr._fragment.getText()) {
+                        return -1;
+                    }
+                    if (this._fragment.getText() > attr._fragment.getText()) {
+                        return 1;
+                    }
+                }
+                if (this._nullProgram < attr._nullProgram) {
+                    return -1;
+                }
+                if (this._nullProgram > attr._nullProgram) {
+                    return 1;
+                }
+                return 0;
             }
         })
     ),

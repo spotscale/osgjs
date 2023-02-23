@@ -45,6 +45,38 @@ utils.createPrototypeStateAttribute(
 
         apply: function(state) {
             state.applyScissor(this);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._x < attr._x) {
+                return -1;
+            }
+            if (this._x > attr._x) {
+                return 1;
+            }
+            if (this._y < attr._y) {
+                return -1;
+            }
+            if (this._y > attr._y) {
+                return 1;
+            }
+            if (this._width < attr._width) {
+                return -1;
+            }
+            if (this._width > attr._width) {
+                return 1;
+            }
+            if (this._height < attr._height) {
+                return -1;
+            }
+            if (this._height > attr._height) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

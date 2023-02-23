@@ -287,6 +287,209 @@ utils.createPrototypeObject(
                 }
             }
         },
+      
+        // Return shallow clone
+        clone: function() {
+            var ss = new StateSet();
+            ss._parents = [];
+            ss._attributeArray = this._attributeArray;
+            ss._textureAttributeArrayList = this._textureAttributeArrayList;
+            ss._binName = this._binName;
+            ss._binNumber = this._binNumber;
+            ss._shaderGeneratorPair = this._shaderGeneratorPair;
+            ss._updateCallbackList = this._updateCallbackList;
+            ss.uniforms = this.uniforms;
+            ss._hasUniform = this._hasUniform;
+            return ss;
+        },
+      
+        // Return -1 if less, 0 if equal and 1 if greater
+        compare: function(ss) {
+            var thisNumAttributes = this._attributeArray.length;
+            var otherNumAttributes = ss._attributeArray.length;
+            if (thisNumAttributes < otherNumAttributes) {
+                return -1;
+            }
+            if (thisNumAttributes > otherNumAttributes) {
+                return 1;
+            }
+            for (var i = 0; i < thisNumAttributes; ++i) {
+                var thisAttributePair = this._attributeArray[i];
+                var otherAttributePair = ss._attributeArray[i];
+                if (!thisAttributePair && otherAttributePair) {
+                    return -1;
+                }
+                if (thisAttributePair && !otherAttributePair) {
+                    return 1;
+                }
+                if (thisAttributePair && otherAttributePair) {
+                    if (!thisAttributePair._object && otherAttributePair._object) {
+                        return -1;
+                    }
+                    if (thisAttributePair._object && !otherAttributePair._object) {
+                        return 1;
+                    }
+                    if (thisAttributePair._object && otherAttributePair._object) {
+                        var attrComp = thisAttributePair._object.compare(otherAttributePair._object);
+                        if (attrComp !== 0) {
+                            return attrComp;
+                        }
+                        if (thisAttributePair._value < otherAttributePair._value) {
+                            return -1;
+                        }
+                        if (thisAttributePair._value > otherAttributePair._value) {
+                            return 1;
+                        }
+                    }
+                }
+            }
+            
+            var thisNumLayers = this._textureAttributeArrayList.length;
+            var otherNumLayers = ss._textureAttributeArrayList.length;
+            if (thisNumLayers < otherNumLayers) {
+                return -1;
+            }
+            if (thisNumLayers > otherNumLayers) {
+                return 1;
+            }
+            for (var l = 0; l < thisNumLayers; ++l) {
+                var thisTextureAttributes = this._textureAttributeArrayList[l];
+                var otherTextureAttributes = ss._textureAttributeArrayList[l];
+                thisNumAttributes = thisTextureAttributes.length;
+                otherNumAttributes = otherTextureAttributes.length;
+                if (thisNumAttributes < otherNumAttributes) {
+                    return -1;
+                }
+                if (thisNumAttributes > otherNumAttributes) {
+                    return 1;
+                }
+                for (var i = 0; i < thisNumAttributes; ++i) {
+                    var thisAttributePair = thisTextureAttributes[i];
+                    var otherAttributePair = otherTextureAttributes[i];
+                    if (!thisAttributePair && otherAttributePair) {
+                        return -1;
+                    }
+                    if (thisAttributePair && !otherAttributePair) {
+                        return 1;
+                    }
+                    if (thisAttributePair && otherAttributePair) {
+                        if (!thisAttributePair._object && otherAttributePair._object) {
+                            return -1;
+                        }
+                        if (thisAttributePair._object && !otherAttributePair._object) {
+                            return 1;
+                        }
+                        if (thisAttributePair._object && otherAttributePair._object) {
+                            var attrComp = thisAttributePair._object.compare(otherAttributePair._object);
+                            if (attrComp !== 0) {
+                                return attrComp;
+                            }
+                            if (thisAttributePair._value < otherAttributePair._value) {
+                                return -1;
+                            }
+                            if (thisAttributePair._value > otherAttributePair._value) {
+                                return 1;
+                            }
+                        }
+                    }
+                }
+                
+                if (this._binName < ss._binName) {
+                    return -1;
+                }
+                if (this._binName > ss._binName) {
+                    return 1;
+                }
+                if (this._binNumber < ss._binNumber) {
+                    return -1;
+                }
+                if (this._binNumber > ss._binNumber) {
+                    return 1;
+                }
+                if (!this._shaderGeneratorPair && ss._shaderGeneratorPair) {
+                    return -1;
+                }
+                if (this._shaderGeneratorPair && !ss._shaderGeneratorPair) {
+                    return 1;
+                }
+                if (this._shaderGeneratorPair && ss._shaderGeneratorPair) {
+                    if (this._shaderGeneratorPair._object < ss._shaderGeneratorPair._object) {
+                        return -1;
+                    }
+                    if (this._shaderGeneratorPair._object > ss._shaderGeneratorPair._object) {
+                        return 1;
+                    }
+                    if (this._shaderGeneratorPair._value < ss._shaderGeneratorPair._value) {
+                        return -1;
+                    }
+                    if (this._shaderGeneratorPair._value > ss._shaderGeneratorPair._value) {
+                        return 1;
+                    }
+                }
+                if (this._hasUniform < ss._hasUniform) {
+                    return -1;
+                }
+                if (this._hasUniform > ss._hasUniform) {
+                    return 1;
+                }
+                if (this._drawID < ss._drawID) {
+                    return -1;
+                }
+                if (this._drawID > ss._drawID) {
+                    return 1;
+                }
+
+                var thisUniformNames = window.Object.keys(this.uniforms);
+                var otherUniformNames = window.Object.keys(ss.uniforms);
+                var thisNumUniforms = thisUniformNames.length;
+                var otherNumUniforms = otherUniformNames.length;
+                if (thisNumUniforms < otherNumUniforms) {
+                    return -1;
+                }
+                if (thisNumUniforms > otherNumUniforms) {
+                    return 1;
+                }
+                for (var i = 0; i < thisNumUniforms; ++i) {
+                    if (thisUniformNames[i] < otherUniformNames[i]) {
+                        return -1;
+                    }
+                    if (thisUniformNames[i] > otherUniformNames[i]) {
+                        return 1;
+                    }
+                }
+                for (var name in this.uniforms) {
+                    var thisUniform = this.uniforms[name];
+                    var otherUniform = ss.uniforms[name];
+                    if (!thisUniform && otherUniform) {
+                        return -1;
+                    }
+                    if (thisUniform && !otherUniform) {
+                        return 1;
+                    }
+                    if (thisUniform && otherUniform) {
+                        if (!thisUniform._object && otherUniform._object) {
+                            return -1;
+                        }
+                        if (thisUniform._object && !otherUniform._object) {
+                            return 1;
+                        }
+                        if (thisUniform._object && otherUniform._object) {
+                            var uniformComp = thisUniform._object.compare(otherUniform._object);
+                            if (uniformComp !== 0) {
+                                return uniformComp;
+                            }
+                            if (thisUniform._value < otherUniform._value) {
+                                return -1;
+                            }
+                            if (thisUniform._value > otherUniform._value) {
+                                return 1;
+                            }
+                        }
+                    }
+                }
+            }
+            return 0;
+        },
 
         // for internal use, you should not call it directly
         _setTextureAttribute: function(unit, attributePair) {

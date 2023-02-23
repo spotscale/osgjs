@@ -17,6 +17,20 @@ utils.createPrototypeStateAttribute(
         },
         apply: function(state) {
             state.getGraphicContext().lineWidth(this.lineWidth);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this.lineWidth < attr.lineWidth) {
+                return -1;
+            }
+            if (this.lineWidth > attr.lineWidth) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

@@ -185,6 +185,68 @@ utils.createPrototypeStateAttribute(
 
         _computeInternalHash: function() {
             return this.getTypeMember() + '_' + this.getKernelSizePCF();
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+            if (this._lightNumber < attr._lightNumber) {
+                return -1;
+            }
+            if (this._lightNumber > attr._lightNumber) {
+                return 1;
+            }
+            if (this._bias < attr._bias) {
+                return -1;
+            }
+            if (this._bias > attr._bias) {
+                return 1;
+            }
+            if (this._normalBias < attr._normalBias) {
+                return -1;
+            }
+            if (this._normalBias > attr._normalBias) {
+                return 1;
+            }
+            if (this._precision < attr._precision) {
+                return -1;
+            }
+            if (this._precision > attr._precision) {
+                return 1;
+            }
+            if (this._kernelSizePCF < attr._kernelSizePCF) {
+                return -1;
+            }
+            if (this._kernelSizePCF > attr._kernelSizePCF) {
+                return 1;
+            }
+            if (this._fakePCF < attr._fakePCF) {
+                return -1;
+            }
+            if (this._fakePCF > attr._fakePCF) {
+                return 1;
+            }
+            if (this._jitterOffset < attr._jitterOffset) {
+                return -1;
+            }
+            if (this._jitterOffset > attr._jitterOffset) {
+                return 1;
+            }
+            if (this._isAtlasTexture < attr._isAtlasTexture) {
+                return -1;
+            }
+            if (this._isAtlasTexture > attr._isAtlasTexture) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osgShadow',

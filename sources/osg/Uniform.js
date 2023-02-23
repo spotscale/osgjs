@@ -108,6 +108,59 @@ Uniform.prototype = {
         this._data[13] = f[13];
         this._data[14] = f[14];
         this._data[15] = f[15];
+    },
+    
+    // Return -1 if less, 0 if equal and 1 if greater
+    compare: function(attr) {
+        if (this._name < attr._name) {
+            return -1;
+        }
+        if (this._name > attr._name) {
+            return 1;
+        }
+        if (this._type < attr._type) {
+            return -1;
+        }
+        if (this._type > attr._type) {
+            return 1;
+        }
+        if (this._glCall < attr._glCall) {
+            return -1;
+        }
+        if (this._glCall > attr._glCall) {
+            return 1;
+        }
+        if (this._transpose < attr._transpose) {
+            return -1;
+        }
+        if (this._transpose > attr._transpose) {
+            return 1;
+        }
+        if (this._isMatrix < attr._isMatrix) {
+            return -1;
+        }
+        if (this._isMatrix > attr._isMatrix) {
+            return 1;
+        }
+        if (!this._data && attr._data) {
+            return -1;
+        }
+        if (this._data && !attr._data) {
+            return 1;
+        }
+        if (this._data && attr._data) {
+            // Checked both type and glCall abvove so must be same type
+            var length = this._data.length;
+            for (let i = 0; i < length; ++i) {
+                if (this._data[i] < attr._data[i]) {
+                    return -1;
+                }
+                if (this._data[i] > attr._data[i]) {
+                    return 1;
+                }
+            }
+        }
+        return 0;
     }
 };
 Uniform.prototype.setVec2 = Uniform.prototype.setFloat2;

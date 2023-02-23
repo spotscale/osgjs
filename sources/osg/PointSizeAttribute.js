@@ -76,6 +76,32 @@ utils.createPrototypeStateAttribute(
 
             var uniforms = this.getOrCreateUniforms();
             uniforms.pointSize.setFloat(this._pointSize);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+            if (this._pointSize < attr._pointSize) {
+                return -1;
+            }
+            if (this._pointSize > attr._pointSize) {
+                return 1;
+            }
+            if (this._circleShape < attr._circleShape) {
+                return -1;
+            }
+            if (this._circleShape > attr._circleShape) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

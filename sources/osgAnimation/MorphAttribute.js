@@ -100,6 +100,56 @@ utils.createPrototypeStateAttribute(
 
             var uniformMap = this.getOrCreateUniforms();
             uniformMap.uTargetWeights.setFloat4(this._targetWeights);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._nbTarget < attr._nbTarget) {
+                return -1;
+            }
+            if (this._nbTarget > attr._nbTarget) {
+                return 1;
+            }
+            if (this._enable < attr._enable) {
+                return -1;
+            }
+            if (this._enable > attr._enable) {
+                return 1;
+            }
+
+            var thisTargetNames = window.Object.keys(this._targetNames);
+            var otherTargetNames = window.Object.keys(attr._targetNames);
+            var thisNumTargetNames = thisTargetNames.length;
+            var otherNumTargetNames = otherTargetNames.length;
+            if (thisNumTargetNames < otherNumTargetNames) {
+                return -1;
+            }
+            if (thisNumTargetNames > otherNumTargetNames) {
+                return 1;
+            }
+
+            for (var i = 0; i < thisNumTargetNames; ++i) {
+                if (thisTargetNames[i] < otherTargetNames[i]) {
+                    return -1;
+                }
+                if (thisTargetNames[i] > otherTargetNames[i]) {
+                    return 1;
+                }
+            }
+            for (var name in this._targetNames) {
+                var thisTargetBool = this._targetNames[name];
+                var otherTargetBool = ss._targetNames[name];
+                if (thisTargetBool < otherTargetBool) {
+                    return -1;
+                }
+                if (thisTargetBool > otherTargetBool) {
+                    return 1;
+                }
+            }
+            return 0;
         }
     }),
     'osgAnimation',

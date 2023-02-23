@@ -64,6 +64,30 @@ vec3.ONE = vec3.fromValues(1.0, 1.0, 1.0);
 vec3.INFINITY = vec3.fromValues(Infinity, Infinity, Infinity);
 vec3.NEGATIVE_INFINITY = vec3.fromValues(-Infinity, -Infinity, -Infinity);
 
+vec3.compare = function(a, b) {
+    if (vec3.exactEquals(a, b)) {
+        return 0;
+    }
+    if (a[0] < b[0]) {
+        return -1;
+    }
+    else if (a[0] > b[0]) {
+        return 1;
+    }
+    else if (a[1] < b[1]) {
+        return -1;
+    }
+    else if (a[1] > b[1]) {
+        return 1;
+    }
+    else if (a[2] < b[2]) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
+}
+
 // osg vec2 additions
 
 vec2.create32 = function() {
@@ -102,6 +126,24 @@ vec2.ZERO = vec2.create();
 vec2.ONE = vec2.fromValues(1.0, 1.0);
 vec2.INFINITY = vec2.fromValues(Infinity, Infinity);
 vec2.NEGATIVE_INFINITY = vec2.fromValues(-Infinity, -Infinity);
+
+vec2.compare = function(a, b) {
+    if (vec2.exactEquals(a, b)) {
+        return 0;
+    }
+    if (a[0] < b[0]) {
+        return -1;
+    }
+    else if (a[0] > b[0]) {
+        return 1;
+    }
+    else if (a[1] < b[1]) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
+}
 
 // osg vec4 additions
 
@@ -147,6 +189,36 @@ vec4.ZERO = vec4.create();
 vec4.ONE = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
 vec4.INFINITY = vec4.fromValues(Infinity, Infinity, Infinity, Infinity);
 vec4.NEGATIVE_INFINITY = vec4.fromValues(-Infinity, -Infinity, -Infinity, -Infinity);
+
+vec4.compare = function(a, b) {
+    if (vec4.exactEquals(a, b)) {
+        return 0;
+    }
+    if (a[0] < b[0]) {
+        return -1;
+    }
+    else if (a[0] > b[0]) {
+        return 1;
+    }
+    else if (a[1] < b[1]) {
+        return -1;
+    }
+    else if (a[1] > b[1]) {
+        return 1;
+    }
+    else if (a[2] < b[2]) {
+        return -1;
+    }
+    else if (a[2] > b[2]) {
+        return 1;
+    }
+    else if (a[3] < b[3]) {
+        return -1;
+    }
+    else {
+        return 1;
+    }
+}
 
 // quat
 

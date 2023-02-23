@@ -37,6 +37,20 @@ utils.createPrototypeStateAttribute(
 
         apply: function(state) {
             state.applyCullFace(this);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._mode < attr._mode) {
+                return -1;
+            }
+            if (this._mode > attr._mode) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

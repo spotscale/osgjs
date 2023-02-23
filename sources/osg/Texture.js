@@ -899,6 +899,116 @@ utils.createPrototypeStateAttribute(
                 if (this._type === Texture.HALF_FLOAT && !WebglCaps.instance().isWebGL2())
                     return Texture.HALF_FLOAT_OES;
                 return this._type;
+            },
+            
+            compare: function(attr) {
+                var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+                if (compareTypes !== 0) {
+                    return compareTypes;
+                }
+                if (!this._image && attr._image) {
+                    return -1;
+                }
+                if (this._image && !attr._image) {
+                    return 1;
+                }
+                if (this._image && attr._image) {
+                    var imageComp = this._image.compare(attr._image);
+                    if (imageComp !== 0) {
+                        return imageComp;
+                    }
+                }
+                if (this._magFilter < attr._magFilter) {
+                    return -1;
+                }
+                if (this._magFilter > attr._magFilter) {
+                    return 1;
+                }
+                if (this._minFilter < attr._minFilter) {
+                    return -1;
+                }
+                if (this._minFilter > attr._minFilter) {
+                    return 1;
+                }
+                if (this._maxAnisotropy < attr._maxAnisotropy) {
+                    return -1;
+                }
+                if (this._maxAnisotropy > attr._maxAnisotropy) {
+                    return 1;
+                }
+                if (this._wrapS < attr._wrapS) {
+                    return -1;
+                }
+                if (this._wrapS > attr._wrapS) {
+                    return 1;
+                }
+                if (this._wrapT < attr._wrapT) {
+                    return -1;
+                }
+                if (this._wrapT > attr._wrapT) {
+                    return 1;
+                }
+                if (this._textureWidth < attr._textureWidth) {
+                    return -1;
+                }
+                if (this._textureWidth > attr._textureWidth) {
+                    return 1;
+                }
+                if (this._textureHeight < attr._textureHeight) {
+                    return -1;
+                }
+                if (this._textureHeight > attr._textureHeight) {
+                    return 1;
+                }
+                if (this._unrefImageDataAfterApply < attr._unrefImageDataAfterApply) {
+                    return -1;
+                }
+                if (this._unrefImageDataAfterApply > attr._unrefImageDataAfterApply) {
+                    return 1;
+                }
+                if (this._internalFormat < attr._internalFormat) {
+                    return -1;
+                }
+                if (this._internalFormat > attr._internalFormat) {
+                    return 1;
+                }
+                if (this._textureTarget < attr._textureTarget) {
+                    return -1;
+                }
+                if (this._textureTarget > attr._textureTarget) {
+                    return 1;
+                }
+                if (this._type < attr._type) {
+                    return -1;
+                }
+                if (this._type > attr._type) {
+                    return 1;
+                }                    
+                if (this._isCompressed < attr._isCompressed) {
+                    return -1;
+                }
+                if (this._isCompressed > attr._isCompressed) {
+                    return 1;
+                }
+                if (this._flipY < attr._flipY) {
+                    return -1;
+                }
+                if (this._flipY > attr._flipY) {
+                    return 1;
+                }
+                if (this._colorSpaceConversion < attr._colorSpaceConversion) {
+                    return -1;
+                }
+                if (this._colorSpaceConversion > attr._colorSpaceConversion) {
+                    return 1;
+                }
+                if (this._textureNull < attr._textureNull) {
+                    return -1;
+                }
+                if (this._textureNull > attr._textureNull) {
+                    return 1;
+                }
+                return 0;
             }
         })
     ),

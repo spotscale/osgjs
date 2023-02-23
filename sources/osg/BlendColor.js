@@ -46,6 +46,14 @@ utils.createPrototypeStateAttribute(
                 this._constantColor[2],
                 this._constantColor[3]
             );
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            return vec4.compare(this._constantColor, attr._constantColor);
         }
     }),
     'osg',

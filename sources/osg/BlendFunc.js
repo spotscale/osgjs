@@ -140,6 +140,44 @@ utils.createPrototypeStateAttribute(
          */
         apply: function(state) {
             state.applyBlendFunc(this);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._sourceFactor < attr._sourceFactor) {
+                return -1;
+            }
+            if (this._sourceFactor > attr._sourceFactor) {
+                return 1;
+            }
+            if (this._destinationFactor < attr._destinationFactor) {
+                return -1;
+            }
+            if (this._destinationFactor > attr._destinationFactor) {
+                return 1;
+            }
+            if (this._sourceFactorAlpha < attr._sourceFactorAlpha) {
+                return -1;
+            }
+            if (this._sourceFactorAlpha > attr._sourceFactorAlpha) {
+                return 1;
+            }
+            if (this._destinationFactorAlpha < attr._destinationFactorAlpha) {
+                return -1;
+            }
+            if (this._destinationFactorAlpha > attr._destinationFactorAlpha) {
+                return 1;
+            }
+            if (this._separate < attr._separate) {
+                return -1;
+            }
+            if (this._separate > attr._separate) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',

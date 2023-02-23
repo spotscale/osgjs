@@ -97,6 +97,46 @@ utils.createPrototypeStateAttribute(
             uniforms.specular.setFloat4(this._specular);
             uniforms.emission.setFloat4(this._emission);
             uniforms.shininess.setFloat(this._shininess);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            var ambientComp = vec4.compare(this._ambient, attr._ambient);
+            if (ambientComp !== 0) {
+                return ambientComp;
+            }
+            var diffuseComp = vec4.compare(this._diffuse, attr._diffuse);
+            if (diffuseComp !== 0) {
+                return diffuseComp;
+            }
+            var specularComp = vec4.compare(this._specular, attr._specular);
+            if (specularComp !== 0) {
+                return specularComp;
+            }
+            var emissionComp = vec4.compare(this._emission, attr._emission);
+            if (emissionComp !== 0) {
+                return emissionComp;
+            }
+            if (this._shininess < attr._shininess) {
+                return -1;
+            }
+            if (this._shininess > attr._shininess) {
+                return 1;
+            }
+            return 0;
+        },
+        
+        clone: function() {
+            var m = new Material();
+            m._ambient = vec4.clone(this._ambient);
+            m._diffuse = vec4.clone(this._diffuse);
+            m._specular = vec4.clone(this._specular);
+            m._emission = vec4.clone(this._emission);
+            m._shininess = this._shininess;
+            return m;
         }
     }),
     'osg',

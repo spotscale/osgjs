@@ -27,6 +27,38 @@ utils.createPrototypeStateAttribute(
         },
         apply: function(state) {
             state.applyColorMask(this);
+        },
+        
+        compare: function(attr) {
+            var compareTypes = StateAttribute.prototype.compare.call(this, attr);
+            if (compareTypes !== 0) {
+                return compareTypes;
+            }
+            if (this._red < attr._red) {
+                return -1;
+            }
+            if (this._red > attr._red) {
+                return 1;
+            }
+            if (this._green < attr._green) {
+                return -1;
+            }
+            if (this._green > attr._green) {
+                return 1;
+            }
+            if (this._blue < attr._blue) {
+                return -1;
+            }
+            if (this._blue > attr._blue) {
+                return 1;
+            }
+            if (this._alpha < attr._alpha) {
+                return -1;
+            }
+            if (this._alpha > attr._alpha) {
+                return 1;
+            }
+            return 0;
         }
     }),
     'osg',
