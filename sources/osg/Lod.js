@@ -18,6 +18,8 @@ var Lod = function() {
     this._rangeMode = Lod.DISTANCE_FROM_EYE_POINT;
     this._userDefinedCenter = [];
     this._centerMode = Lod.USE_BOUNDING_SPHERE_CENTER;
+    
+    this._userDefinedRadius = -1;
 };
 
 Lod.DISTANCE_FROM_EYE_POINT = 0;
@@ -40,6 +42,10 @@ utils.createPrototypeNode(
          * Used to determine the bounding sphere of the LOD in the absence of any children.*/
         setRadius: function(radius) {
             this._radius = radius;
+        },
+
+        setUserDefinedRadius: function(userDefinedRadius) {
+            this._userDefinedRadius = userDefinedRadius;
         },
 
         setCenter: function(center) {
@@ -75,6 +81,9 @@ utils.createPrototypeNode(
                 return bsphere;
             } else {
                 Node.prototype.computeBoundingSphere.call(this, bsphere);
+                if (this._userDefinedRadius !== -1 && this._userDefinedCenter.length > 0) {
+                  bsphere.set(vec3.clone(this._userDefinedCenter), bsphere.radius());
+                }
                 return bsphere;
             }
         },
@@ -178,7 +187,8 @@ utils.createPrototypeNode(
         pixelSize: function(bound, viewport, projMatrix, viewMatrix) {
             const center3 = bound.center();
             const center4 = vec4.fromValues(center3[0], center3[1], center3[2], 1.0);
-            return bound.radius() / vec4.dot(center4, this.computePixelSizeVector(viewport, projMatrix, viewMatrix));
+            const radius = (this._userDefinedRadius === -1 ? bound.radius() : this._userDefinedRadius);
+            return radius / vec4.dot(center4, this.computePixelSizeVector(viewport, projMatrix, viewMatrix));
         },
 
         clampedPixelSize: function(bound, viewport, projMatrix, viewMatrix) {
