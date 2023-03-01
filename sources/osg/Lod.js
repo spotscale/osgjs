@@ -4,6 +4,7 @@ import NodeVisitor from 'osg/NodeVisitor';
 import { mat4 } from 'osg/glMatrix';
 import { vec2 } from 'osg/glMatrix';
 import { vec3 } from 'osg/glMatrix';
+import { vec4 } from 'osg/glMatrix';
 import BoundingSphere from 'osg/BoundingSphere';
 
 /**
@@ -128,6 +129,62 @@ utils.createPrototypeNode(
             return true;
         },
 
+        computePixelSizeVector: (function() {
+            var scale00 = vec3.create();
+            var scale10 = vec3.create();
+            return function(W, P, M) {
+                // Where W = viewport, P = ProjectionMatrix, M = ModelViewMatrix
+                // Comment from OSG:
+                // pre adjust P00,P20,P23,P33 by multiplying them by the viewport window matrix.
+                // here we do it in short hand with the knowledge of how the window matrix is formed
+                // note P23,P33 are multiplied by an implicit 1 which would come from the window matrix.
+
+                // scaling for horizontal pixels
+                var P00 = P[0] * W.width() * 0.5;
+                var P20_00 = P[8] * W.width() * 0.5 + P[11] * W.width() * 0.5;
+                vec3.set(
+                    scale00,
+                    M[0] * P00 + M[2] * P20_00,
+                    M[4] * P00 + M[6] * P20_00,
+                    M[8] * P00 + M[10] * P20_00
+                );
+
+                // scaling for vertical pixels
+                var P10 = P[5] * W.height() * 0.5;
+                var P20_10 = P[9] * W.height() * 0.5 + P[11] * W.height() * 0.5;
+                vec3.set(
+                    scale10,
+                    M[1] * P10 + M[2] * P20_10,
+                    M[5] * P10 + M[6] * P20_10,
+                    M[9] * P10 + M[10] * P20_10
+                );
+
+                var P23 = P[11];
+                var P33 = P[15];
+                var pixelSizeVector = vec4.fromValues(
+                    M[2] * P23,
+                    M[6] * P23,
+                    M[10] * P23,
+                    M[14] * P23 + M[15] * P33
+                );
+
+                var scaleRatio =
+                    0.7071067811 / Math.sqrt(vec3.sqrLen(scale00) + vec3.sqrLen(scale10));
+                vec4.scale(pixelSizeVector, pixelSizeVector, scaleRatio);
+                return pixelSizeVector;
+            };
+        })(),
+        
+        pixelSize: function(bound, viewport, projMatrix, viewMatrix) {
+            const center3 = bound.center();
+            const center4 = vec4.fromValues(center3[0], center3[1], center3[2], 1.0);
+            return bound.radius() / vec4.dot(center4, this.computePixelSizeVector(viewport, projMatrix, viewMatrix));
+        },
+
+        clampedPixelSize: function(bound, viewport, projMatrix, viewMatrix) {
+            return Math.abs(this.pixelSize(bound, viewport, projMatrix, viewMatrix));
+        },
+
         traverse: (function() {
             // avoid to generate variable on the heap to limit garbage collection
             // instead create variable and use the same each time
@@ -147,14 +204,22 @@ utils.createPrototypeNode(
 
                     case NodeVisitor.TRAVERSE_ACTIVE_CHILDREN:
                         var requiredRange = 0;
-                        var matrix = visitor.getCurrentModelViewMatrix();
-                        mat4.invert(viewModel, matrix);
-                        // Calculate distance from viewpoint
+
                         if (this._rangeMode === Lod.DISTANCE_FROM_EYE_POINT) {
+                            // Calculate distance from viewpoint
+                            var matrix = visitor.getCurrentModelViewMatrix();
+                            mat4.invert(viewModel, matrix);
                             vec3.transformMat4(eye, zeroVector, viewModel);
                             var d = vec3.distance(this.getBound().center(), eye);
                             requiredRange = d * visitor.getLODScale();
                         } else {
+                            // SPOTSCALE: To avoid distorted bounding spheres near edges of screen resulting in
+                            // larger pixel area than bounding sphere straight ahead, use radius-based calculation from OSG instead:
+                            requiredRange = this.clampedPixelSize(this.getBound(), visitor.getViewport(), visitor.getCurrentProjectionMatrix(), visitor.getCurrentModelViewMatrix()) / visitor.getLODScale();
+                            // Square pixels as before
+                            requiredRange = Math.pow(requiredRange, 2.0);
+                          
+                            /*
                             // Let's calculate pixels on screen
                             var projmatrix = visitor.getCurrentProjectionMatrix();
                             // focal lenght is the value stored in projmatrix[0]
@@ -170,6 +235,10 @@ utils.createPrototypeNode(
                                 visitor.getViewport().width() *
                                 0.25 /
                                 visitor.getLODScale();
+                            */
+                            
+                            if (requiredRange < 0)
+                                requiredRange = this._range[this._range.length - 1][0];
                         }
 
                         var numChildren = this.children.length;
