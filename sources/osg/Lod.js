@@ -20,6 +20,7 @@ var Lod = function() {
     this._centerMode = Lod.USE_BOUNDING_SPHERE_CENTER;
     
     this._userDefinedRadius = -1;
+    this._activeChildren = [];
 };
 
 Lod.DISTANCE_FROM_EYE_POINT = 0;
@@ -46,6 +47,10 @@ utils.createPrototypeNode(
 
         setUserDefinedRadius: function(userDefinedRadius) {
             this._userDefinedRadius = userDefinedRadius;
+        },
+
+        getActiveChildren: function() {
+            return this._activeChildren;
         },
 
         setCenter: function(center) {
@@ -254,12 +259,15 @@ utils.createPrototypeNode(
                         var numChildren = this.children.length;
                         if (this._range.length < numChildren) numChildren = this._range.length;
 
+                        this._activeChildren = [];
                         for (var j = 0; j < numChildren; ++j) {
                             if (
                                 this._range[j][0] <= requiredRange &&
                                 requiredRange < this._range[j][1]
                             ) {
-                                this.children[j].accept(visitor);
+                                var child = this.children[j];
+                                child.accept(visitor);
+                                this._activeChildren.push(child);
                             }
                         }
                         break;
