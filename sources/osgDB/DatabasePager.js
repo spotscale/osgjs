@@ -118,13 +118,13 @@ var sortByPriority = function(r1, r2) {
  */
 var DatabasePager = function() {
     this._pendingRequests = [];
+    this._loadingRequests = [];
     this._pendingNodes = [];
     this._loading = false;
     this._progressCallback = undefined;
     this._lastCB = true;
     this._activePagedLODList = new Set();
     this._childrenToRemoveList = new Set();
-    this._downloadingRequestsNumber = 0;
     this._maxRequestsPerFrame = 10;
     this._acceptNewRequests = true;
     this._releaseVisitor = new ReleaseVisitor();
@@ -174,7 +174,6 @@ utils.createPrototypeObject(
             this._lastCB = true;
             this._activePagedLODList.clear();
             this._childrenToRemoveList.clear();
-            this._downloadingRequestsNumber = 0;
             this._maxRequestsPerFrame = 10;
             this._acceptNewRequests = true;
             this._targetMaximumNumberOfPagedLOD = 75;
@@ -203,14 +202,14 @@ utils.createPrototypeObject(
         executeProgressCallback: function() {
             if (this._pendingRequests.length > 0 || this._pendingNodes.length > 0) {
                 this._progressCallback(
-                    this._pendingRequests.length + this._downloadingRequestsNumber,
+                    this._pendingRequests.length + this._loadingRequests.length,
                     this._pendingNodes.length
                 );
                 this._lastCB = false;
             } else {
                 if (!this._lastCB) {
                     this._progressCallback(
-                        this._pendingRequests.length + this._downloadingRequestsNumber,
+                        this._pendingRequests.length + this._loadingRequests.length,
                         this._pendingNodes.length
                     );
                     this._lastCB = true;
@@ -227,7 +226,7 @@ utils.createPrototypeObject(
         },
 
         getRequestListSize: function() {
-            return this._pendingRequests.length + this._downloadingRequestsNumber;
+            return this._pendingRequests.length + this._loadingRequests.length;
         },
 
         setProgressCallback: function(cb) {
@@ -281,8 +280,17 @@ utils.createPrototypeObject(
             var numRequests = this._pendingRequests.length;
             for (let i = 0; i < numRequests; ++i) {
                 if (this._pendingRequests[i]._url === url) {
-                    --this._downloadingRequestsNumber;
                     this._pendingRequests.splice(i, 1);
+                    return true;
+                }
+            }
+            
+            numRequests = this._loadingRequests.length;
+            for (let i = 0; i < numRequests; ++i) {
+                var request = this._loadingRequests[i];
+                if (request._url === url) {
+                    request._groupExpired = true;
+                    this._loadingRequests.splice(i, 1);
                     return true;
                 }
             }
@@ -327,7 +335,6 @@ utils.createPrototypeObject(
                 var numRequests = Math.min(this._maxRequestsPerFrame, this._pendingRequests.length);
                 this._pendingRequests.sort(sortByPriority);
                 for (var i = 0; i < numRequests; i++) {
-                    this._downloadingRequestsNumber++;
                     this.processRequest(this._pendingRequests.shift());
                 }
             }
@@ -339,27 +346,38 @@ utils.createPrototypeObject(
             // Check if the request is valid;
             if (dbrequest._groupExpired) {
                 //Notify.log( 'DatabasePager::processRequest() Request expired.' );
-                that._downloadingRequestsNumber--;
                 this._loading = false;
                 return;
             }
 
             // Load from function
             if (dbrequest._function !== undefined) {
+                this._loadingRequests.push(dbrequest);
                 this.loadNodeFromFunction(dbrequest._function, dbrequest._group).then(function(
                     child
                 ) {
-                    that._downloadingRequestsNumber--;
-                    dbrequest._loadedModel = child;
-                    that._pendingNodes.push(dbrequest);
+                    var index = that._loadingRequests.indexOf(dbrequest);
+                    if (index > -1) {
+                        that._loadingRequests.splice(index, 1);
+                    }
+                    if (!dbrequest._groupExpired) {
+                        dbrequest._loadedModel = child;
+                        that._pendingNodes.push(dbrequest);
+                    }
                     that._loading = false;
                 });
             } else if (dbrequest._url !== '') {
                 // Load from URL
+                this._loadingRequests.push(dbrequest);
                 this.loadNodeFromURL(dbrequest._url).then(function(child) {
-                    that._downloadingRequestsNumber--;
-                    dbrequest._loadedModel = child;
-                    that._pendingNodes.push(dbrequest);
+                    var index = that._loadingRequests.indexOf(dbrequest);
+                    if (index > -1) {
+                        that._loadingRequests.splice(index, 1);
+                    }
+                    if (!dbrequest._groupExpired) {
+                        dbrequest._loadedModel = child;
+                        that._pendingNodes.push(dbrequest);
+                    }
                     that._loading = false;
                 });
             }

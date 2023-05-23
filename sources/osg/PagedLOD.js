@@ -220,13 +220,11 @@ utils.createPrototypeNode(
                                     needToLoadChild = true;
                                 }
                             }
-                            /*
                             else if (this._perRangeDataList[j].dbrequest !== undefined) {
                                 // If there is a pending request for this node although we are now far from it, throw it out of the queue
                                 dbhandler.removeRequest(this._databasePath + this._perRangeDataList[j].filename);
                                 this._perRangeDataList[j].dbrequest = undefined;
                             }
-                            */
                         }
                         if (needToLoadChild) {
                             var numChildren = this.children.length;
