@@ -200,7 +200,7 @@ utils.createPrototypeObject(
         },
 
         executeProgressCallback: function() {
-            if (this._pendingRequests.length > 0 || this._pendingNodes.length > 0) {
+            if (this._pendingRequests.length > 0 || this._pendingNodes.length > 0 || this._loadingRequests.length > 0) {
                 this._progressCallback(
                     this._pendingRequests.length + this._loadingRequests.length,
                     this._pendingNodes.length
