@@ -123,7 +123,7 @@ utils.createPrototypeNode(
             if (this.children.length > this._range.length) {
                 var r = [];
                 var max = 0.0;
-                if (this._range.lenght > 0) max = this._range[this._range.length - 1][1];
+                if (this._range.length > 0) max = this._range[this._range.length - 1][1];
                 r.push(vec2.fromValues(max, max));
                 this._range.push(r);
             }
@@ -237,7 +237,7 @@ utils.createPrototypeNode(
                             /*
                             // Let's calculate pixels on screen
                             var projmatrix = visitor.getCurrentProjectionMatrix();
-                            // focal lenght is the value stored in projmatrix[0]
+                            // focal length is the value stored in projmatrix[0]
                             requiredRange = this.projectBoundingSphere(
                                 this.getBound(),
                                 matrix,

@@ -114,7 +114,7 @@ utils.createPrototypeObject(
             var modelViewMatrixStackArray = this._modelViewMatrixStack.getArray();
             if (!this._cameraIndexStack.getLength()) return modelViewMatrixStackArray[0];
 
-            // also we could keep the index of the current to avoid lenght-1 at each access
+            // also we could keep the index of the current to avoid length-1 at each access
             // it's implemented in osg like that:
             // https://github.com/openscenegraph/osg/blob/master/include/osg/fast_back_stack
             return modelViewMatrixStackArray[this._cameraModelViewIndexStack.back()];
@@ -297,7 +297,7 @@ utils.createPrototypeObject(
                 // compute the World/View matrix
                 // There is an exception for the root camera, the root camera is not pushed on the
                 // CullVisitor but only its matrixes, so to handle this we compute the inverse camera
-                // when the nodepath has a lenght of 0
+                // when the nodepath has a length of 0
                 // To avoid to compute too much inverse matrix, we keep a cache of them during the
                 // traverse and store the result under the instanceID key, except for the root
                 var np = this.getNodePath();
