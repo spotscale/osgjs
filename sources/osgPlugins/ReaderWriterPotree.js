@@ -266,8 +266,8 @@ ReaderWriterPotree.prototype = {
         rootTile.setRangeMode( PagedLOD.PIXEL_SIZE_ON_SCREEN );
         var ss = rootTile.getOrCreateStateSet();
         var pointSizeAttr = new PointSizeAttribute( false );
-        //pointSizeAttr.setCircleShape( true );
-        pointSizeAttr.setPointSize( 15.0 );
+        pointSizeAttr.setCircleShape( true );
+        pointSizeAttr.setPointSize( 5.0 );
         for (let i = 0; i < 8; ++i) {
           ss.setAttributeAndModes( new Light( i, true ) );
         }
