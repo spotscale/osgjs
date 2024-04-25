@@ -312,6 +312,13 @@ ReaderWriterPotree.prototype = {
                       tileLOD.setRange( 1, rangeMin, Number.MAX_VALUE );
                   }
                 }
+                
+                const bbox = rw._pco.hierarchy[tileLOD.getName()].boundingBox;
+                const bboxCenter = vec3.create();
+                bbox.center(bboxCenter);
+                tileLOD.setCenter(bboxCenter);
+                tileLOD.setRadius(bbox.radius());
+                
                 numChilds--;
                 if ( numChilds <= 0 )
                     defer.resolve( group );
@@ -360,6 +367,9 @@ ReaderWriterPotree.prototype = {
             var verticesUint = new Uint32Array( this._binaryDecoder.decodeUint32Interleaved( numPoints, 0, this._pco.pointAttributes.byteSize, 3 ).buffer );
             var vertices = new Float32Array( numPoints * 3 * 4 );
             for ( var i = 0; i < verticesUint.length; i++ ) {
+                if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
+                  continue;
+                }
                 vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ];
                 vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
                 vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];

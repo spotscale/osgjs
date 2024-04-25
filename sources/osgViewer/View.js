@@ -232,7 +232,7 @@ View.prototype = {
      * X = 0 at the left
      * Y = 0 at the BOTTOM
      */
-    computeIntersections: function(x, y, traversalMask) {
+    computeIntersections: function(x, y, traversalMask, threshold, scaleThreshold) {
         /*jshint bitwise: false */
         if (traversalMask === undefined) {
             traversalMask = ~0;
@@ -252,7 +252,9 @@ View.prototype = {
 
         this._lsi.set(
             vec3.set(this._origIntersect, x, y, 0.0),
-            vec3.set(this._dstIntersect, x, y, 1.0)
+            vec3.set(this._dstIntersect, x, y, 1.0),
+            threshold,
+            scaleThreshold
         );
 
         if (!this._iv) {

@@ -16,12 +16,13 @@ var LineSegmentIntersector = function() {
     // only used for lines and points
     this._threshold = 0.0;
     this._iThreshold = 0.0;
+    this._scaleThreshold = true;
 };
 
 utils.createPrototypeObject(
     LineSegmentIntersector,
     utils.objectInherit(Intersector.prototype, {
-        set: function(start, end, threshold) {
+        set: function(start, end, threshold, scaleThreshold) {
             vec3.copy(this._start, start);
             vec3.copy(this._iStart, start);
             vec3.copy(this._end, end);
@@ -29,6 +30,9 @@ utils.createPrototypeObject(
 
             if (threshold !== undefined) {
                 this._threshold = this._iThreshold = threshold;
+            }
+            if (scaleThreshold !== undefined) {
+                this._scaleThreshold = scaleThreshold;
             }
         },
 
@@ -122,7 +126,7 @@ utils.createPrototypeObject(
         setCurrentTransformation: function(matrix) {
             mat4.invert(matrix, matrix);
 
-            if (this._threshold > 0.0) {
+            if (this._threshold > 0.0 && this._scaleThreshold) {
                 var tmp = this._iStart;
                 mat4.getScale(tmp, matrix);
                 var x = tmp[0];
