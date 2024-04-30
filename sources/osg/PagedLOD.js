@@ -220,8 +220,9 @@ utils.createPrototypeNode(
                                     needToLoadChild = true;
                                 }
                             }
-                            else if (this._perRangeDataList[j].dbrequest !== undefined) {
+                            else if (this._perRangeDataList[j].dbrequest !== undefined && this._perRangeDataList[j].dbrequest._function === undefined) {
                                 // If there is a pending request for this node although we are now far from it, throw it out of the queue
+                                // (if it's not loaded by function so that we can trust the URL)
                                 dbhandler.removeRequest(this._databasePath + this._perRangeDataList[j].filename);
                                 this._perRangeDataList[j].dbrequest = undefined;
                             }
@@ -251,14 +252,13 @@ utils.createPrototypeNode(
                                 }
                                 // Here we do the request
                                 var group = visitor.nodePath[visitor.nodePath.length - 1];
-                                if (this._perRangeDataList[numChildren].loaded === false) {
-                                    this._perRangeDataList[numChildren].loaded = true;
-                                    this._perRangeDataList[
-                                        numChildren
-                                    ].dbrequest = dbhandler.requestNodeFile(
-                                        this._perRangeDataList[numChildren].function,
-                                        //this._databasePath + this._perRangeDataList[this.children.length].filename,
-                                        this._databasePath + this._perRangeDataList[numChildren].filename,
+                                var lastRange = this._perRangeDataList[numChildren];
+                                if (lastRange.loaded === false) {
+                                    var filename = lastRange.filename;
+                                    lastRange.loaded = true;
+                                    lastRange.dbrequest = dbhandler.requestNodeFile(
+                                        lastRange.function,
+                                        filename === undefined || filename === '' ? '' : this._databasePath + filename,
                                         group,
                                         visitor.getFrameStamp().getSimulationTime(),
                                         priority,
@@ -269,16 +269,16 @@ utils.createPrototypeNode(
                                 } else {
                                     // Update timestamp of the request.
                                     if (
-                                        this._perRangeDataList[numChildren].dbrequest !== undefined
+                                        lastRange.dbrequest !== undefined
                                     ) {
-                                        this._perRangeDataList[numChildren].dbrequest._timeStamp = visitor.getFrameStamp().getSimulationTime();
-                                        this._perRangeDataList[numChildren].dbrequest._priority = priority;
-                                        this._perRangeDataList[numChildren].dbrequest._depth = visitor.nodePath.length;
-                                        this._perRangeDataList[numChildren].dbrequest._requiredRange = requiredRange;
-                                        this._perRangeDataList[numChildren].dbrequest._distance = distance;
+                                        lastRange.dbrequest._timeStamp = visitor.getFrameStamp().getSimulationTime();
+                                        lastRange.dbrequest._priority = priority;
+                                        lastRange.dbrequest._depth = visitor.nodePath.length;
+                                        lastRange.dbrequest._requiredRange = requiredRange;
+                                        lastRange.dbrequest._distance = distance;
                                     } else {
                                         // The DB request is undefined, so the DBPager was not accepting requests, we need to ask for the child again.
-                                        this._perRangeDataList[numChildren].loaded = false;
+                                        lastRange.loaded = false;
                                     }
                                 }
                             }

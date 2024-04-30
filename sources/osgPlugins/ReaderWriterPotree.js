@@ -338,23 +338,6 @@ ReaderWriterPotree.prototype = {
         return defer.promise;
     },
 
-
-    readTileChildren: function () {
-        if ( !this._pco.hierarchy[ parent.getName() ].hasChildren ) return;
-        var group = new Node();
-        var children = this._pco.hierarchy[ parent.getName() ].children;
-        for ( var i = 0; i < children.length; i++ ) {
-            var plod = new PagedLOD();
-            plod.setName( children[ i ].name );
-            plod.setFileName( 0, children[ i ].name + '.bin' );
-            plod.setRange( 0, 0, Number.MAX_VALUE );
-            group.addChild( plod );
-            this.readTileChildren( plod );
-        }
-        parent.addChild( group, 0, Number.MAX_VALUE );
-    },
-
-
     readTileGeometry: function ( bufferArray, name ) {
         try {
             var bbox = this._pco.hierarchy[ name ].boundingBox;
