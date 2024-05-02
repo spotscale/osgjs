@@ -99,6 +99,8 @@ ReaderWriterPotree.prototype = {
 
         filePromise.then( function ( file ) {
             defer.resolve( self.readCloudFile( file ) );
+        } ).catch( function ( err ) {
+            defer.reject( err );
         } );
         return defer.promise;
     },
@@ -123,17 +125,39 @@ ReaderWriterPotree.prototype = {
 
     readHierarchyFile: function () {
         var rootHrcUrl = this._databasePath + 'r/r.hrc';
-        var filePromise = requestFile( rootHrcUrl, {
-            responseType: 'arraybuffer'
-        } );
         var self = this;
-        return filePromise.then( function ( arrayBuffer ) {
-            return self.readHierarchy( arrayBuffer );
+        return new P(function(resolve) {
+            requestFile( rootHrcUrl, {
+                responseType: 'arraybuffer'
+            } ).then( function ( arrayBuffer ) {
+                var nodes = {};
+                self.readHierarchy( arrayBuffer, 'r', nodes);
+                // Read sub-hierarchy folders
+                var subPromises = [];
+                for (let name in nodes) {
+                    var node = nodes[name];
+                    if (node.level >= self._pco.hierarchyStepSize) {
+                        var subHrcUrl = self._databasePath + 'r/' + name.substr(1) + '/' + name + '.hrc';
+                        var subFilePromise = requestFile( subHrcUrl, {
+                            responseType: 'arraybuffer'
+                        } );
+                        subPromises.push(subFilePromise);
+                        subFilePromise.then( function ( arrayBuffer ) {
+                            var fromNum = Object.keys(nodes).length;
+                            self.readHierarchy( arrayBuffer, name, nodes );
+                        }.bind( name ) );
+                    }            
+                }
+
+                P.all(subPromises).then(function() {
+                    resolve(nodes);
+                } );
+            } );
         } );
     },
 
 
-    readHierarchy: function ( bufferArray ) {
+    readHierarchy: function ( bufferArray, hrcName, nodes ) {
         //var count = bufferArray.byteLength / 5;
         this._binaryDecoder.setBuffer( bufferArray );
         this._binaryDecoder.setLittleEndian( true );
@@ -143,7 +167,7 @@ ReaderWriterPotree.prototype = {
         stack.push( {
             children: children,
             numPoints: numPoints,
-            name: 'r'
+            name: hrcName
         } );
         var decoded = [];
         var i;
@@ -179,16 +203,19 @@ ReaderWriterPotree.prototype = {
             }
         }
 
-        var nodes = {};
-        nodes.numPoints = numPoints;
-        var root = {};
-        root.children = [];
-        root.hasChildren = true;
-        root.boundingBox = this._pco.boundingBox;
-        vec3.sub( root.boundingBox.getMax(), root.boundingBox.getMax(), root.boundingBox.getMin() );
-        root.boundingBox.setMin( vec3.ZERO );
-        nodes[ 'r' ] = root;
-
+        if (nodes.numPoints === undefined) {
+            nodes.numPoints = numPoints;
+        }
+        
+        if (hrcName === 'r') {
+            var root = {};
+            root.children = [];
+            root.hasChildren = true;
+            root.boundingBox = this._pco.boundingBox;
+            vec3.sub( root.boundingBox.getMax(), root.boundingBox.getMax(), root.boundingBox.getMin() );
+            root.boundingBox.setMin( vec3.ZERO );
+            nodes[ 'r' ] = root;
+        }
 
         for ( i = 0; i < decoded.length; i++ ) {
             var name = decoded[ i ].name;
@@ -213,7 +240,6 @@ ReaderWriterPotree.prototype = {
         }
 
         // node.loadPoints();
-        return nodes;
     },
 
     createChildAABB: function ( aabb, childIndex ) {
@@ -297,9 +323,9 @@ ReaderWriterPotree.prototype = {
         var defer = P.defer();
         var numChilds = 0;
         var group = new Node();
-        var createTile = function ( tileLOD, rw ) {
-
-            var tileurl = tileLOD.getDatabasePath() + 'r/' + tileLOD.getName() + '.bin';
+        var createTile = function ( tileLOD, rw, level ) {
+            var folder = ( level >= rw._pco.hierarchyStepSize ? tileLOD.getName().substr( 1, rw._pco.hierarchyStepSize ) + '/' : '' );
+            var tileurl = tileLOD.getDatabasePath() + 'r/' + folder + tileLOD.getName() + '.bin';
             requestFile( tileurl, {
                 responseType: 'arraybuffer'
             } ).then( function ( bufferArray ) {
@@ -327,12 +353,15 @@ ReaderWriterPotree.prototype = {
 
         var children = this._pco.hierarchy[ parent.getName() ].children;
         numChilds = children.length;
+        if (numChilds === 0) {
+            defer.resolve( group );
+        }
         for ( var i = 0; i < numChilds; i++ ) {
             var tileLOD = new PagedLOD();
             tileLOD.setRangeMode( PagedLOD.PIXEL_SIZE_ON_SCREEN );
             tileLOD.setName( children[ i ].name );
             tileLOD.setDatabasePath( parent.getDatabasePath() );
-            createTile( tileLOD, this );
+            createTile( tileLOD, this, children[ i ].level );
             group.addChild( tileLOD );
         }
         return defer.promise;
