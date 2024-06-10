@@ -117,7 +117,8 @@ utils.createPrototypeObject(
             return (
                 img instanceof Uint8Array ||
                 img instanceof Float32Array ||
-                img instanceof Uint16Array
+                img instanceof Uint16Array ||
+                img instanceof Uint32Array
             );
         },
 

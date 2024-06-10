@@ -1118,20 +1118,40 @@ utils.createPrototypeObject(
                 }
 
                 vertexAttribMap[attrib] = array;
-                gl.vertexAttribPointer(
-                    attrib,
-                    array.getItemSize(),
-                    array.getType(),
-                    normalize,
-                    0,
-                    0
-                );
+                
+                var type = array.getType();
+                var isWebgl2 = WebGLCaps.instance().isWebGL2();
+                if (isWebgl2 && (type === gl.INT || type == gl.UNSIGNED_INT)) {
+                  gl.vertexAttribIPointer(
+                      attrib,
+                      array.getItemSize(),
+                      type,
+                      normalize,
+                      0,
+                      0
+                  );
+                }
+                else {
+                  gl.vertexAttribPointer(
+                      attrib,
+                      array.getItemSize(),
+                      type,
+                      normalize,
+                      0,
+                      0
+                  );
+                }
                 if (divisor !== undefined) {
-                    var ext = WebGLCaps.instance(gl).getWebGLExtension('ANGLE_instanced_arrays');
-                    if (!ext) {
-                        notify.error('Your browser does not support instanced arrays');
+                    if (isWebgl2) {
+                        gl.vertexAttribDivisor(attrib, divisor);
                     }
-                    ext.vertexAttribDivisorANGLE(attrib, divisor);
+                    else {
+                        var ext = WebGLCaps.instance(gl).getWebGLExtension('ANGLE_instanced_arrays');
+                        if (!ext) {
+                            notify.error('Your browser does not support instanced arrays');
+                        }
+                        ext.vertexAttribDivisorANGLE(attrib, divisor);
+                    }
                 }
             }
         },

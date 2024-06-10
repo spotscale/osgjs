@@ -129,6 +129,7 @@ Texture.HALF_FLOAT_OES = 0x8d61;
 Texture.HALF_FLOAT = 0x140b;
 Texture.UNSIGNED_INT_10F_11F_11F_REV = 0x8c3b;
 Texture.UNSIGNED_INT_24_8 = 0x84fa;
+Texture.UNSIGNED_INT = 0x1405;
 
 /////////////
 // FORMAT GL1
@@ -162,6 +163,7 @@ Texture.RGBA4 = 0x8056;
 Texture.RGBA8UI = 0x8d7c;
 Texture.SRGB8_ALPHA8 = 0x8c43;
 Texture.SRGB8 = 0x8c41;
+Texture.RGBA32UI = 0x8D70;
 
 // HALF FLOAT - FLOAT
 Texture.R16F = 0x822d;
@@ -199,6 +201,7 @@ var createMapGl2ToGl1 = function() {
     map[Texture.RGBA16F] = Texture.RGBA;
     map[Texture.RGBA32F] = Texture.RGBA;
     map[Texture.SRGB8_ALPHA8] = Texture.RGBA;
+    map[Texture.RGBA32UI] = Texture.RGBA;
 
     return map;
 };
@@ -228,6 +231,7 @@ var createMapGl1ToGl2 = function() {
 
     ushort[Texture.DEPTH_COMPONENT] = Texture.DEPTH_COMPONENT16;
     uint[Texture.DEPTH_COMPONENT] = Texture.DEPTH_COMPONENT32F;
+    uint[Texture.RGBA_INTEGER] = Texture.RGBA32UI;
     uin24[Texture.DEPTH_STENCIL] = Texture.DEPTH24_STENCIL8;
 
     return map;
@@ -535,6 +539,7 @@ utils.createPrototypeStateAttribute(
                     img instanceof ImageBitmap ||
                     img instanceof Uint8Array ||
                     img instanceof Uint16Array ||
+                    img instanceof Uint32Array ||
                     img instanceof Float32Array
                 ) {
                     image = new Image(img);

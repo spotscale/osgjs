@@ -4,6 +4,7 @@ import WebGLCaps from 'osg/WebGLCaps';
 import DrawElements from 'osg/DrawElements';
 import utils from 'osg/utils';
 import notify from 'osg/notify';
+import WebGLCaps from 'osg/WebGLCaps';
 
 /**
  * DrawElementsInstanced manages rendering of instanced indexed primitives
@@ -19,21 +20,33 @@ var DrawElementsInstanced = function(mode, indices, numPrimitives) {
 utils.createPrototypeNode(
     DrawElementsInstanced,
     utils.objectInherit(DrawElements.prototype, {
-        drawElements: function() {
-            if (!this._extension) {
-                this._extension = WebGLCaps.instance().getWebGLExtension('ANGLE_instanced_arrays');
-                if (!this._extension) {
-                    notify.error('Your browser does not support instanced arrays extension');
-                    return;
-                }
+        drawElements: function(state) {
+            if (WebGLCaps.instance().isWebGL2()) {
+                var gl = state.getGraphicContext();
+                gl.drawElementsInstanced(
+                    this._mode,
+                    this._count,
+                    this._uType,
+                    this._offset,
+                    this._numPrimitives
+                );
             }
-            this._extension.drawElementsInstancedANGLE(
-                this._mode,
-                this._count,
-                this._uType,
-                this._offset,
-                this._numPrimitives
-            );
+            else {
+                if (!this._extension) {
+                    this._extension = WebGLCaps.instance().getWebGLExtension('ANGLE_instanced_arrays');
+                    if (!this._extension) {
+                        notify.error('Your browser does not support instanced arrays extension');
+                        return;
+                    }
+                }
+                this._extension.drawElementsInstancedANGLE(
+                    this._mode,
+                    this._count,
+                    this._uType,
+                    this._offset,
+                    this._numPrimitives
+                );
+            }
         },
 
         setNumPrimitives: function(numPrimitives) {

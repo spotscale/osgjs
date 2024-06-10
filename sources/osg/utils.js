@@ -306,6 +306,7 @@ utils.Uint8Array = window.Uint8Array;
 utils.Uint8ClampedArray = window.Uint8ClampedArray;
 utils.Int16Array = window.Int16Array;
 utils.Uint16Array = window.Uint16Array;
+utils.Uint32Array = window.Uint32Array;
 utils.Int32Array = window.Int32Array;
 utils.Uint32Array = window.Uint32Array;
 utils.Float32Array = window.Float32Array;

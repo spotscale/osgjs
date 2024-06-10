@@ -41,6 +41,7 @@ if (window.Set && window.Map && window.Uint8ClampedArray) {
         Uint8ClampedArray.prototype.slice = _slicePolyfill;
         Int16Array.prototype.slice = _slicePolyfill;
         Uint16Array.prototype.slice = _slicePolyfill;
+        Uint32Array.prototype.slice = _slicePolyfill;
         Int32Array.prototype.slice = _slicePolyfill;
         Uint32Array.prototype.slice = _slicePolyfill;
         Float32Array.prototype.slice = _slicePolyfill;
