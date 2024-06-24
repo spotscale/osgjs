@@ -1,5 +1,6 @@
 import Depth from 'osg/Depth';
 import BlendFunc from 'osg/BlendFunc';
+import BlendEquation from 'osg/BlendEquation';
 import CullFace from 'osg/CullFace';
 
 // To avoid to apply duplicate states we cache them and apply them only
@@ -37,6 +38,24 @@ var createStateBlendFunc = function() {
             destinationFactor: undefined,
             sourceFactorAlpha: undefined,
             destinationFactorAlpha: undefined
+        },
+        changed: true
+    };
+};
+
+var createStateBlendEquation = function() {
+    return {
+        buffer: {
+            separate: false,
+            enable: false,
+            mode: BlendFunc.FUNC_ADD,
+            modeAlpha: BlendFunc.FUNC_ADD
+        },
+        state: {
+            separate: undefined,
+            enable: false,
+            mode: undefined,
+            modeAlpha: undefined
         },
         changed: true
     };
@@ -174,6 +193,7 @@ var StateCache = function() {
     this._stateDepth = createStateDepth();
     this._stateCullFace = createStateCullFace();
     this._stateBlendFunc = createStateBlendFunc();
+    this._stateBlendEquation = createStateBlendEquation();
 };
 
 StateCache.prototype = {
@@ -538,6 +558,66 @@ StateCache.prototype = {
         }
     },
 
+    applyBlendEquationAttribute: function(attribute) {
+        var data = this._stateBlendEquation;
+        var buffer = data.buffer;
+        var state = data.state;
+        var enable = (attribute._sourceFactor !== BlendEquation.DISABLE);
+        data.changed = false;
+
+        buffer.enable = enable;
+        buffer.separate = attribute._separate;
+        buffer.mode = attribute._mode;
+        buffer.modeAlpha = attribute._modeAlpha;
+        buffer.destinationFactorAlpha = attribute._destinationFactorAlpha;
+
+        if (
+            state.enable !== enable ||
+            state.mode !== attribute.mode ||
+            state.modeAlpha !== attribute._modeAlpha
+        ) {
+            data.changed = true;
+        }
+    },
+
+    applyBlendEquation: function(gl) {
+        var data = this._stateBlendEquation;
+        var buffer = data.buffer;
+        var state = data.state;
+        data.changed = false;
+
+        if (state.enable !== buffer.enable) {
+            state.enable = buffer.enable;
+            /*
+            if (state.enable) {
+                gl.enable(gl.BLEND);
+            } else {
+                gl.disable(gl.BLEND);
+            }
+            */
+        }
+
+        if (!state.enable) return;
+
+        state.separate = buffer.separate;
+        if (state.separate) {
+            if (
+                state.mode !== buffer.mode ||
+                state.modeAlpha !== buffer.modeAlpha
+            ) {
+                state.mode = buffer.mode;
+                state.modeAlpha = buffer.modeAlpha;
+                gl.blendEquationSeparate(
+                    state.mode,
+                    state.modeAlpha
+                );
+            }
+        } else if (state.mode !== buffer.mode) {
+            state.mode = buffer.mode;
+            gl.blendEquation(state.mode);
+        }
+    },
+    
     applyClearStates: function(gl) {
         if (this._stateDepthMask.changed) {
             this.applyDepthMask(gl);
@@ -574,6 +654,9 @@ StateCache.prototype = {
         }
         if (this._stateBlendFunc.changed) {
             this.applyBlendFunc(gl);
+        }
+        if (this._stateBlendEquation.changed) {
+            this.applyBlendEquation(gl);
         }
         if (this._stateColorMask.changed) {
             this.applyColorMask(gl);

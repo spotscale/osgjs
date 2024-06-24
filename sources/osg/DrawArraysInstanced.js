@@ -48,12 +48,12 @@ utils.createPrototypeNode(
             }
         },
 
-        setNumPrimitives: function(numPrimitives) {
-            this._numPrimitives = numPrimitives;
+        setNumInstances: function(numInstances) {
+            this._numInstances = numInstances;
         },
 
-        getNumPrimitives: function() {
-            return this._numPrimitives;
+        getNumInstances: function() {
+            return this._numInstances;
         }
     }),
     'osg',

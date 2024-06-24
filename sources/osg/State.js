@@ -167,6 +167,10 @@ utils.createPrototypeObject(
             this._stateCache.applyBlendFuncAttribute(attribute);
         },
 
+        applyBlendEquation: function(attribute) {
+            this._stateCache.applyBlendEquationAttribute(attribute);
+        },
+
         applyCullFace: function(attribute) {
             this._stateCache.applyCullFaceAttribute(attribute);
         },
@@ -1123,22 +1127,21 @@ utils.createPrototypeObject(
                 var isWebgl2 = WebGLCaps.instance().isWebGL2();
                 if (isWebgl2 && (type === gl.INT || type == gl.UNSIGNED_INT)) {
                   gl.vertexAttribIPointer(
-                      attrib,
-                      array.getItemSize(),
-                      type,
-                      normalize,
-                      0,
-                      0
+                      attrib, // index
+                      array.getItemSize(), // size
+                      type, // type
+                      0, // stride
+                      0 // offset
                   );
                 }
                 else {
                   gl.vertexAttribPointer(
-                      attrib,
-                      array.getItemSize(),
-                      type,
-                      normalize,
-                      0,
-                      0
+                      attrib, // index
+                      array.getItemSize(), // size
+                      type, // type
+                      normalize, // normalized
+                      0, // stride
+                      0  // offset
                   );
                 }
                 if (divisor !== undefined) {
