@@ -87,7 +87,7 @@ BinaryDecoder.prototype = {
         for ( var i = 0; i < size; i++ ) {
             this._offset = offset + i * byteSize;
             for ( var j = 0; j < numElements; j++ ) {
-                array[ i * 3 + j ] = this.getUint32Value();
+                array[ i * numElements + j ] = this.getUint32Value();
             }
         }
         return array;
@@ -98,12 +98,22 @@ BinaryDecoder.prototype = {
         for ( var i = 0; i < size; i++ ) {
             this._offset = offset + i * byteSize;
             for ( var j = 0; j < numElements; j++ ) {
-                array[ i * 3 + j ] = this.getUint8Value();
+                array[ i * numElements + j ] = this.getUint8Value();
             }
         }
         return array;
     },
 
+    decodeFloat32Interleaved( size, offset, byteSize, numElements ) {
+        var array = new Float32Array( size * numElements );
+        for ( var i = 0; i < size; i++ ) {
+            this._offset = offset + i * byteSize;
+            for ( var j = 0; j < numElements; j++ ) {
+                array[ i * numElements + j ] = this.getFloat32Value();
+            }
+        }
+        return array;
+    },
 
     decodeStringArray: function ( size ) {
         var str = '';

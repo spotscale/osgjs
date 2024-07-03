@@ -27,6 +27,12 @@ PointAttributeNames.NORMAL_SPHEREMAPPED = 8;
 PointAttributeNames.NORMAL_OCT16 = 9;
 PointAttributeNames.NORMAL = 10;
 
+// For splat:
+PointAttributeNames.RGBA = 11;
+PointAttributeNames.SCALE = 12;
+PointAttributeNames.ROTATION = 13;
+
+
 var PointAttribute = function ( name, size, numElements ) {
     this.name = name;
     this.numElements = numElements;
@@ -45,18 +51,32 @@ PointAttribute.NORMAL_SPHEREMAPPED = new PointAttribute( PointAttributeNames.NOR
 PointAttribute.NORMAL_OCT16 = new PointAttribute( PointAttributeNames.NORMAL_OCT16, Uint8Array.BYTES_PER_ELEMENT, 2 );
 PointAttribute.NORMAL = new PointAttribute( PointAttributeNames.NORMAL, Float32Array.BYTES_PER_ELEMENT, 3 );
 
+// For splat:
+PointAttribute.RGBA = PointAttribute.RGBA_PACKED;
+PointAttribute.SCALE = new PointAttribute( PointAttributeNames.SCALE, Float32Array.BYTES_PER_ELEMENT, 3 );
+PointAttribute.ROTATION = new PointAttribute( PointAttributeNames.ROTATION, Float32Array.BYTES_PER_ELEMENT, 4 );
+
 var PointAttributes = function ( pointAttributes ) {
     this.attributes = [];
     this.byteSize = 0;
     this.size = 0;
 
+    var pointAttributeNames = [];
     for ( var i = 0; i < pointAttributes.length; i++ ) {
         var pointAttributeName = pointAttributes[ i ];
+        pointAttributeNames.push(pointAttributeName);
         var pointAttribute = PointAttribute[ pointAttributeName ];
         this.attributes.push( pointAttribute );
         this.byteSize += pointAttribute.byteSize;
         this.size++;
     }
+    
+    this.splat = (
+      pointAttributeNames.indexOf('POSITION_CARTESIAN') > -1 &&
+      pointAttributeNames.indexOf('RGBA') > -1 &&
+      pointAttributeNames.indexOf('SCALE') > -1 &&
+      pointAttributeNames.indexOf('ROTATION') > -1
+    )
 };
 
 var PointCloudOctree = function () {
@@ -313,6 +333,10 @@ ReaderWriterPotree.prototype = {
                 // Is it a leaf node?
                 rootTile.setFunction( 1, self.readChildrenTiles.bind( self ) );
                 rootTile.setRange( 1, 250000, Number.MAX_VALUE );
+
+                // Monkey-patch splat boolean on root PagedLOD
+                rootTile.splat = self._pco.pointAttributes.splat;
+
                 return rootTile;
             }
         } );
@@ -378,22 +402,35 @@ ReaderWriterPotree.prototype = {
             var min = bbox.getMin();
             var verticesUint = new Uint32Array( this._binaryDecoder.decodeUint32Interleaved( numPoints, 0, this._pco.pointAttributes.byteSize, 3 ).buffer );
             var vertices = new Float32Array( numPoints * 3 * 4 );
-            for ( var i = 0; i < verticesUint.length; i++ ) {
+            for ( var i = 0; i < numPoints; i++ ) {
                 if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
-                  continue;
+                    continue;
                 }
                 vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ];
                 vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
                 vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];
             }
-
-            var colors = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 3 ).buffer );
-            var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, colors, 3, true );
-            colorBuffer.setNormalize( true );
             geometry.setVertexAttribArray( 'Vertex', new BufferArray( BufferArray.ARRAY_BUFFER, vertices, 3 ) );
-            geometry.setVertexAttribArray( 'Color', colorBuffer );
-            //g.getVertexAttributeList().Normal = new BufferArray( BufferArray.ARRAY_BUFFER, normal, 3 );
-            //g.getVertexAttributeList().TexCoord0 = new BufferArray( BufferArray.ARRAY_BUFFER, uv, 2 );
+
+            if (this._pco.pointAttributes.splat) {
+                var rgbaUint = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 4 ).buffer );
+                var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, rgbaUint, 4 );
+                colorBuffer.setNormalize( true );
+                geometry.setVertexAttribArray( 'Color', colorBuffer );
+                
+                var scaleFloat = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 16, this._pco.pointAttributes.byteSize, 3 ).buffer );
+                geometry.setVertexAttribArray( 'Scale', new BufferArray( BufferArray.ARRAY_BUFFER, scaleFloat, 3 ) );
+                
+                var rotationFloat = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 28, this._pco.pointAttributes.byteSize, 4 ).buffer );
+                geometry.setVertexAttribArray( 'Rotation', new BufferArray( BufferArray.ARRAY_BUFFER, rotationFloat, 4 ) );
+            }
+            else {
+                var colors = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 3 ).buffer );
+                var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, colors, 3, true );
+                colorBuffer.setNormalize( true );
+                geometry.setVertexAttribArray( 'Color', colorBuffer );
+            }
+            
             geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
             return geometry;
         }
