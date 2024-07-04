@@ -54,7 +54,7 @@ PointAttribute.NORMAL = new PointAttribute( PointAttributeNames.NORMAL, Float32A
 // For splat:
 PointAttribute.RGBA = PointAttribute.RGBA_PACKED;
 PointAttribute.SCALE = new PointAttribute( PointAttributeNames.SCALE, Float32Array.BYTES_PER_ELEMENT, 3 );
-PointAttribute.ROTATION = new PointAttribute( PointAttributeNames.ROTATION, Float32Array.BYTES_PER_ELEMENT, 4 );
+PointAttribute.ROTATION = new PointAttribute( PointAttributeNames.ROTATION, Int8Array.BYTES_PER_ELEMENT, 4 );
 
 var PointAttributes = function ( pointAttributes ) {
     this.attributes = [];
@@ -92,6 +92,8 @@ var PointCloudOctree = function () {
     this.offset = undefined;
     this.hierarchy = undefined;
     this.scale = 1.0;
+    this._databasePath = undefined;
+    this._splatCallback = undefined;
 };
 
 var ReaderWriterPotree = function () {
@@ -107,8 +109,13 @@ ReaderWriterPotree.prototype = {
 
     readNodeURL: function ( url, options ) {
         var defer = P.defer();
-        if ( options && options.databasePath !== undefined ) {
-            this._databasePath = options.databasePath;
+        if ( options ) {
+            if ( options.databasePath !== undefined ) {
+                this._databasePath = options.databasePath;
+            }
+            if ( options.splatCallback !== undefined ) {
+                this._splatCallback = options.splatCallback;
+            }
         }
 
         var self = this;
@@ -334,9 +341,6 @@ ReaderWriterPotree.prototype = {
                 rootTile.setFunction( 1, self.readChildrenTiles.bind( self ) );
                 rootTile.setRange( 1, 250000, Number.MAX_VALUE );
 
-                // Monkey-patch splat boolean on root PagedLOD
-                rootTile.splat = self._pco.pointAttributes.splat;
-
                 return rootTile;
             }
         } );
@@ -398,7 +402,6 @@ ReaderWriterPotree.prototype = {
             this._binaryDecoder.setLittleEndian( true );
             var numPoints = bufferArray.byteLength / this._pco.pointAttributes.byteSize;
             notify.log( 'Tile numPoints:' + numPoints );
-            var geometry = new Geometry();
             var min = bbox.getMin();
             var verticesUint = new Uint32Array( this._binaryDecoder.decodeUint32Interleaved( numPoints, 0, this._pco.pointAttributes.byteSize, 3 ).buffer );
             var vertices = new Float32Array( numPoints * 3 * 4 );
@@ -410,28 +413,41 @@ ReaderWriterPotree.prototype = {
                 vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
                 vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];
             }
-            geometry.setVertexAttribArray( 'Vertex', new BufferArray( BufferArray.ARRAY_BUFFER, vertices, 3 ) );
 
+            var geometry = undefined;
             if (this._pco.pointAttributes.splat) {
                 var rgbaUint = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 4 ).buffer );
-                var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, rgbaUint, 4 );
-                colorBuffer.setNormalize( true );
-                geometry.setVertexAttribArray( 'Color', colorBuffer );
-                
                 var scaleFloat = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 16, this._pco.pointAttributes.byteSize, 3 ).buffer );
-                geometry.setVertexAttribArray( 'Scale', new BufferArray( BufferArray.ARRAY_BUFFER, scaleFloat, 3 ) );
+                var rotationUint = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 28, this._pco.pointAttributes.byteSize, 4 ).buffer );
                 
-                var rotationFloat = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 28, this._pco.pointAttributes.byteSize, 4 ).buffer );
-                geometry.setVertexAttribArray( 'Rotation', new BufferArray( BufferArray.ARRAY_BUFFER, rotationFloat, 4 ) );
+                if (this._splatCallback !== undefined) {
+                    // Call splat callback
+                    geometry = this._splatCallback(numPoints, vertices, rgbaUint, scaleFloat, rotationUint);
+                }
+                else {
+                    // Fallback
+                    console.warn('No splatCallback given to ReaderWriterPotree, handling as point cloud');
+                    geometry = new Geometry();
+                    geometry.setVertexAttribArray( 'Vertex', new BufferArray( BufferArray.ARRAY_BUFFER, vertices, 3 ) );
+                    var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, rgbaUint, 4 );
+                    colorBuffer.setNormalize( true );
+                    geometry.setVertexAttribArray( 'Color', colorBuffer );
+                    geometry.setVertexAttribArray( 'Scale', new BufferArray( BufferArray.ARRAY_BUFFER, scaleFloat, 3 ) );
+                    var rotationBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, rotationUint, 4 );
+                    geometry.setVertexAttribArray( 'Rotation', rotationBuffer );
+                    geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
+                }
             }
             else {
+                geometry = new Geometry();
+                geometry.setVertexAttribArray( 'Vertex', new BufferArray( BufferArray.ARRAY_BUFFER, vertices, 3 ) );
                 var colors = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 3 ).buffer );
                 var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, colors, 3, true );
                 colorBuffer.setNormalize( true );
                 geometry.setVertexAttribArray( 'Color', colorBuffer );
+                geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
             }
             
-            geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
             return geometry;
         }
         catch (err) {
