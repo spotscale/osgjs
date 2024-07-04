@@ -142,6 +142,7 @@ ReaderWriterPotree.prototype = {
         this._pco.boundingBox = new BoundingBox();
         this._pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz ) );
         this._pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.ux, cloudJson.boundingBox.uy, cloudJson.boundingBox.uz ) );
+        this._pco.offset = [cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz];
         var self = this;
         return this.readHierarchyFile().then( function ( hrc ) {
             self._pco.hierarchy = hrc;
@@ -409,9 +410,9 @@ ReaderWriterPotree.prototype = {
                 if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
                     continue;
                 }
-                vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ];
-                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
-                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];
+                vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ] + this._pco.offset[ 0 ];
+                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ] + this._pco.offset[ 1 ];
+                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ] + this._pco.offset[ 2 ];
             }
 
             var geometry = undefined;
