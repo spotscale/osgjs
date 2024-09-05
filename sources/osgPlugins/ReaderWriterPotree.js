@@ -12,7 +12,8 @@ import PointSizeAttribute from'osg/PointSizeAttribute';
 import Light from'osg/Light';
 import Node from'osg/Node';
 import BoundingBox from'osg/BoundingBox';
-import { vec3 } from 'osg/glMatrix';
+import MatrixTransform from'osg/MatrixTransform';
+import { vec3, mat4 } from 'osg/glMatrix';
 var PointAttributeNames = {};
 
 PointAttributeNames.POSITION_CARTESIAN = 0; // float x, y, z;
@@ -94,9 +95,6 @@ var PointCloudOctree = function () {
     this.pointAttributes = undefined;
     this.projection = undefined;
     this.boundingBox = undefined;
-    this.tightBoundingBox = undefined;
-    this.boundingSphere = undefined;
-    this.tightBoundingSphere = undefined;
     this.offset = undefined;
     this.hierarchy = undefined;
     this.scale = 1.0;
@@ -110,6 +108,7 @@ var ReaderWriterPotree = function () {
     this._fileName = ''; // The file containing the model of the archive ( gltf, glb, osgjs, b3dm, etc )
     this._pco = new PointCloudOctree();
     this._binaryDecoder = new BinaryDecoder();
+    this._floatValueMinMax = [Number.MAX_VALUE, -Number.MAX_VALUE];
 };
 
 
@@ -156,7 +155,6 @@ ReaderWriterPotree.prototype = {
             self._pco.hierarchy = hrc;
             return self.readRootTile();
         } );
-        // TODO : readBoundingBox Values
     },
 
     readHierarchyFile: function () {
@@ -248,6 +246,8 @@ ReaderWriterPotree.prototype = {
             root.children = [];
             root.hasChildren = true;
             root.boundingBox = this._pco.boundingBox;
+
+            // Make bbox local
             vec3.sub( root.boundingBox.getMax(), root.boundingBox.getMax(), root.boundingBox.getMin() );
             root.boundingBox.setMin( vec3.ZERO );
             nodes[ 'r' ] = root;
@@ -351,7 +351,17 @@ ReaderWriterPotree.prototype = {
                 rootTile.setFunction( 1, self.readChildrenTiles.bind( self ) );
                 rootTile.setRange( 1, 250000, Number.MAX_VALUE );
 
-                return rootTile;
+                var rootTransform = new MatrixTransform();
+                rootTransform.addChild(rootTile);
+                
+                var offsetMatrix = mat4.create();
+                mat4.fromTranslation(offsetMatrix, self._pco.offset);
+                rootTransform.setMatrix(offsetMatrix);
+                
+                // Monkey-patch min/max float value on to root transform
+                rootTransform.floatValueMinMax = self._floatValueMinMax;
+                
+                return rootTransform;
             }
         } );
     },
@@ -419,9 +429,9 @@ ReaderWriterPotree.prototype = {
                 if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
                     continue;
                 }
-                vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ] + this._pco.offset[ 0 ];
-                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ] + this._pco.offset[ 1 ];
-                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ] + this._pco.offset[ 2 ];
+                vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ];
+                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
+                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];
             }
 
             var geometry = undefined;
@@ -456,6 +466,12 @@ ReaderWriterPotree.prototype = {
                   var floatsBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, floats, 1, true );
                   geometry.setVertexAttribArray( 'FloatValue', floatsBuffer );
                   geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
+                  
+                  var floatIterator = floats.values();
+                  for (let floatValue of floatIterator) {
+                      this._floatValueMinMax[0] = Math.min(this._floatValueMinMax[0], floatValue);
+                      this._floatValueMinMax[1] = Math.max(this._floatValueMinMax[1], floatValue);
+                  }
                 }
                 else {
                   var colors = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 3 ).buffer );
