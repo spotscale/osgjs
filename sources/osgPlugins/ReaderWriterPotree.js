@@ -424,7 +424,7 @@ ReaderWriterPotree.prototype = {
             notify.log( 'Tile numPoints:' + numPoints );
             var min = bbox.getMin();
             var verticesUint = new Uint32Array( this._binaryDecoder.decodeUint32Interleaved( numPoints, 0, this._pco.pointAttributes.byteSize, 3 ).buffer );
-            var vertices = new Float32Array( numPoints * 3 * 4 );
+            var vertices = new Float32Array( numPoints * 3 );
             for ( var i = 0; i < numPoints; i++ ) {
                 if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
                     continue;
