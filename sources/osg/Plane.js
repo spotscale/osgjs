@@ -10,25 +10,20 @@ var Plane = utils.objectInherit(vec4, {
     INSIDE: 1,
     INTERSECT: 2,
     OUTSIDE: 3,
-    /* Transform the plane */
-    transformProvidingInverse: function() {
-        var iplane = Plane.create();
-        return function(p, m) {
-            //Matrix.transformVec4PostMult( matrix, plane, iplane );
-            var x = p[0];
-            var y = p[1];
-            var z = p[2];
-            var w = p[3];
+    /* Transform the plane in place */
+    transformProvidingInverse: function(p, m) {
+        var x = p[0];
+        var y = p[1];
+        var z = p[2];
+        var w = p[3];
 
-            iplane[0] = m[0] * x + m[1] * y + m[2] * z + m[3] * w;
-            iplane[1] = m[4] * x + m[5] * y + m[6] * z + m[7] * w;
-            iplane[2] = m[8] * x + m[9] * y + m[10] * z + m[11] * w;
-            iplane[3] = m[12] * x + m[13] * y + m[14] * z + m[15] * w;
+        p[0] = m[0] * x + m[1] * y + m[2] * z + m[3] * w;
+        p[1] = m[4] * x + m[5] * y + m[6] * z + m[7] * w;
+        p[2] = m[8] * x + m[9] * y + m[10] * z + m[11] * w;
+        p[3] = m[12] * x + m[13] * y + m[14] * z + m[15] * w;
 
-            Plane.normalizeEquation(iplane);
-            Plane.copy(iplane, p);
-            return p;
-        };
+        //Plane.normalizeEquation(p);
+        return p;
     },
 
     normalizeEquation: function(plane) {
