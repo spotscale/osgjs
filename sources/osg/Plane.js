@@ -95,7 +95,7 @@ var Plane = utils.objectInherit(vec4, {
         return this.intersectsOrContainsBoundingBox(plane, bbox, absPlane) === Plane.INTERSECT;
     },
 
-    intersectOrContainsVertices: function(plane, vertices) {
+    intersectsOrContainsVertices: function(plane, vertices) {
         var side = -1;
         // all points must be on one side only
         for (var i = 0; i < vertices.length; i++) {
@@ -113,6 +113,12 @@ var Plane = utils.objectInherit(vec4, {
         }
         return side > 0 ? Plane.INSIDE : Plane.OUTSIDE;
     },
+    
+    intersectOrContainsVertices: function(plane, vertices) {
+      // Backward compatibility with incorrect grammar in function name
+      return this.intersectsOrContainsVertices(plane, vertices);
+    },
+    
     intersectVertices: function(plane, vertices) {
         return this.intersectOrContainsVertices(plane, vertices) === Plane.INTERSECT;
     }
