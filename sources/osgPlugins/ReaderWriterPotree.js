@@ -98,31 +98,42 @@ var PointCloudOctree = function () {
     this.offset = undefined;
     this.hierarchy = undefined;
     this.scale = 1.0;
-    this._databasePath = undefined;
-    this._splatCallback = undefined;
 };
 
 var ReaderWriterPotree = function () {
-    this._options = undefined;
-    this._filesMap = new window.Map();
-    this._fileName = ''; // The file containing the model of the archive ( gltf, glb, osgjs, b3dm, etc )
-    this._pco = new PointCloudOctree();
-    this._binaryDecoder = new BinaryDecoder();
-    this._floatValueMinMax = [Number.MAX_VALUE, -Number.MAX_VALUE];
+    this._states = {};
 };
 
 
 ReaderWriterPotree.prototype = {
 
+    _getState: function ( path = '' ) {
+        for (const databasePath in this._states) {
+            if (path.startsWith(databasePath)) {
+                return this._states[databasePath];
+            }
+        }
+
+        const state = {
+            databasePath: path,
+            pco: new PointCloudOctree(),
+            binaryDecoder: new BinaryDecoder(),
+            floatValueMinMax: [Number.MAX_VALUE, -Number.MAX_VALUE],
+            splatCallback: undefined
+        };
+        this._states[path] = state;
+        
+        return state;
+    },
+
     readNodeURL: function ( url, options ) {
         var defer = P.defer();
-        if ( options ) {
-            if ( options.databasePath !== undefined ) {
-                this._databasePath = options.databasePath;
-            }
-            if ( options.splatCallback !== undefined ) {
-                this._splatCallback = options.splatCallback;
-            }
+        
+        const databasePath = (options && options.databasePath ? options.databasePath : '');
+        const state = this._getState(databasePath);
+        
+        if ( options && options.splatCallback !== undefined ) {
+            state.splatCallback = options.splatCallback;
         }
 
         var self = this;
@@ -132,53 +143,54 @@ ReaderWriterPotree.prototype = {
         var filePromise = requestFile( url );
 
         filePromise.then( function ( file ) {
-            defer.resolve( self.readCloudFile( file ) );
+            defer.resolve( self.readCloudFile( file, state ) );
         } ).catch( function ( err ) {
             defer.reject( err );
         } );
         return defer.promise;
     },
-    readCloudFile: function ( file ) {
+    readCloudFile: function ( file, state ) {
         var cloudJson = JSON.parse( file );
-        this._databasePath += cloudJson.octreeDir + '/';
-        this._pco.version = cloudJson.version;
-        this._pco.spacing = cloudJson.spacing;
-        this._pco.hierarchyStepSize = cloudJson.hierarchyStepSize;
-        this._pco.pointAttributes = new PointAttributes(cloudJson.pointAttributes);
-        this._pco.scale = cloudJson.scale;
-        this._pco.boundingBox = new BoundingBox();
-        this._pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz ) );
-        this._pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.ux, cloudJson.boundingBox.uy, cloudJson.boundingBox.uz ) );
-        this._pco.offset = [cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz];
+        
+        state.databasePath += cloudJson.octreeDir + '/';
+        state.pco.version = cloudJson.version;
+        state.pco.spacing = cloudJson.spacing;
+        state.pco.hierarchyStepSize = cloudJson.hierarchyStepSize;
+        state.pco.pointAttributes = new PointAttributes(cloudJson.pointAttributes);
+        state.pco.scale = cloudJson.scale;
+        state.pco.boundingBox = new BoundingBox();
+        state.pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz ) );
+        state.pco.boundingBox.expandByVec3( vec3.fromValues( cloudJson.boundingBox.ux, cloudJson.boundingBox.uy, cloudJson.boundingBox.uz ) );
+        state.pco.offset = [cloudJson.boundingBox.lx, cloudJson.boundingBox.ly, cloudJson.boundingBox.lz];
         var self = this;
-        return this.readHierarchyFile().then( function ( hrc ) {
-            self._pco.hierarchy = hrc;
-            return self.readRootTile();
+        return this.readHierarchyFile( state ).then( function ( hrc ) {
+            state.pco.hierarchy = hrc;
+            return self.readRootTile( state );
         } );
     },
 
-    readHierarchyFile: function () {
-        var rootHrcUrl = this._databasePath + 'r/r.hrc';
+    readHierarchyFile: function ( state ) {
+        var rootHrcUrl = state.databasePath + 'r/r.hrc';
         var self = this;
         return new P(function(resolve) {
             requestFile( rootHrcUrl, {
                 responseType: 'arraybuffer'
             } ).then( function ( arrayBuffer ) {
                 var nodes = {};
-                self.readHierarchy( arrayBuffer, 'r', nodes);
+                self.readHierarchy( arrayBuffer, 'r', nodes, state );
                 // Read sub-hierarchy folders
                 var subPromises = [];
                 for (let name in nodes) {
                     var node = nodes[name];
-                    if (node.level >= self._pco.hierarchyStepSize) {
-                        var subHrcUrl = self._databasePath + 'r/' + name.substr(1) + '/' + name + '.hrc';
+                    if (node.level >= state.pco.hierarchyStepSize) {
+                        var subHrcUrl = state.databasePath + 'r/' + name.substr(1) + '/' + name + '.hrc';
                         var subFilePromise = requestFile( subHrcUrl, {
                             responseType: 'arraybuffer'
                         } );
                         subPromises.push(subFilePromise);
                         subFilePromise.then( function ( arrayBuffer ) {
                             var fromNum = Object.keys(nodes).length;
-                            self.readHierarchy( arrayBuffer, name, nodes );
+                            self.readHierarchy( arrayBuffer, name, nodes, state );
                         }.bind( name ) );
                     }            
                 }
@@ -191,13 +203,13 @@ ReaderWriterPotree.prototype = {
     },
 
 
-    readHierarchy: function ( bufferArray, hrcName, nodes ) {
+    readHierarchy: function ( bufferArray, hrcName, nodes, state ) {
         //var count = bufferArray.byteLength / 5;
-        this._binaryDecoder.setBuffer( bufferArray );
-        this._binaryDecoder.setLittleEndian( true );
+        state.binaryDecoder.setBuffer( bufferArray );
+        state.binaryDecoder.setLittleEndian( true );
         var stack = [];
-        var children = this._binaryDecoder.getUint8Value();
-        var numPoints = this._binaryDecoder.getUint32Value();
+        var children = state.binaryDecoder.getUint8Value();
+        var numPoints = state.binaryDecoder.getUint32Value();
         stack.push( {
             children: children,
             numPoints: numPoints,
@@ -213,8 +225,8 @@ ReaderWriterPotree.prototype = {
                 if ( ( snode.children & mask ) !== 0 ) {
                     try {
                       var childName = snode.name + i;
-                      var childChildren = this._binaryDecoder.getUint8Value();
-                      var childNumPoints = this._binaryDecoder.getUint32Value();
+                      var childChildren = state.binaryDecoder.getUint8Value();
+                      var childNumPoints = state.binaryDecoder.getUint32Value();
                       stack.push( {
                           children: childChildren,
                           numPoints: childNumPoints,
@@ -232,7 +244,7 @@ ReaderWriterPotree.prototype = {
                 }
                 mask = mask * 2;
             }
-            if ( this._binaryDecoder.getOffset() === bufferArray.byteLength ) {
+            if ( state.binaryDecoder.getOffset() === bufferArray.byteLength ) {
                 break;
             }
         }
@@ -245,7 +257,7 @@ ReaderWriterPotree.prototype = {
             var root = {};
             root.children = [];
             root.hasChildren = true;
-            root.boundingBox = this._pco.boundingBox;
+            root.boundingBox = state.pco.boundingBox;
 
             // Make bbox local
             vec3.sub( root.boundingBox.getMax(), root.boundingBox.getMax(), root.boundingBox.getMin() );
@@ -321,9 +333,9 @@ ReaderWriterPotree.prototype = {
 
 
 
-    readRootTile: function () {
+    readRootTile: function ( state ) {
         var rootTile = new PagedLOD();
-        rootTile.setDatabasePath( this._databasePath );
+        rootTile.setDatabasePath( state.databasePath );
         rootTile.setName( 'r' );
         rootTile.setRangeMode( PagedLOD.PIXEL_SIZE_ON_SCREEN );
         var ss = rootTile.getOrCreateStateSet();
@@ -337,29 +349,29 @@ ReaderWriterPotree.prototype = {
         ss.setAttributeAndModes( pointSizeAttr );
         
         // potree root tile
-        var rootUrl = this._databasePath + 'r/r.bin';
+        var rootUrl = state.databasePath + 'r/r.bin';
         var filePromise = requestFile( rootUrl, {
             responseType: 'arraybuffer'
         } );
         var self = this;
         return filePromise.then( function ( arrayBuffer ) {
-            var geometry = self.readTileGeometry( arrayBuffer, rootTile.getName() );
+            var geometry = self.readTileGeometry( arrayBuffer, rootTile.getName(), state );
             if (geometry) {
                 // For now
                 rootTile.addChild( geometry, 0, Number.MAX_VALUE );
                 // Is it a leaf node?
-                rootTile.setFunction( 1, self.readChildrenTiles.bind( self ) );
+                rootTile.setFunction( 1, self.readChildrenTiles.bind( self, state ) );
                 rootTile.setRange( 1, 250000, Number.MAX_VALUE );
 
                 var rootTransform = new MatrixTransform();
                 rootTransform.addChild(rootTile);
                 
                 var offsetMatrix = mat4.create();
-                mat4.fromTranslation(offsetMatrix, self._pco.offset);
+                mat4.fromTranslation(offsetMatrix, state.pco.offset);
                 rootTransform.setMatrix(offsetMatrix);
                 
                 // Monkey-patch min/max float value on to root transform
-                rootTransform.floatValueMinMax = self._floatValueMinMax;
+                rootTransform.floatValueMinMax = state.floatValueMinMax;
                 
                 return rootTransform;
             }
@@ -367,27 +379,27 @@ ReaderWriterPotree.prototype = {
     },
 
 
-    readChildrenTiles: function ( parent ) {
+    readChildrenTiles: function ( state, parent ) {
         var defer = P.defer();
         var numChilds = 0;
         var group = new Node();
         var createTile = function ( tileLOD, rw, level ) {
-            var folder = ( level >= rw._pco.hierarchyStepSize ? tileLOD.getName().substr( 1, rw._pco.hierarchyStepSize ) + '/' : '' );
+            var folder = ( level >= state.pco.hierarchyStepSize ? tileLOD.getName().substr( 1, state.pco.hierarchyStepSize ) + '/' : '' );
             var tileurl = tileLOD.getDatabasePath() + 'r/' + folder + tileLOD.getName() + '.bin';
             requestFile( tileurl, {
                 responseType: 'arraybuffer'
             } ).then( function ( bufferArray ) {
                 var rangeMin = 250000;
-                var child = rw.readTileGeometry( bufferArray, tileLOD.getName() );
+                var child = rw.readTileGeometry( bufferArray, tileLOD.getName(), state );
                 if (child) {
                   tileLOD.addChild( child, 0, Number.MAX_VALUE );
-                  if ( rw._pco.hierarchy[ tileLOD.getName() ].hasChildren ) {
-                      tileLOD.setFunction( 1, rw.readChildrenTiles.bind( rw ) );
+                  if ( state.pco.hierarchy[ tileLOD.getName() ].hasChildren ) {
+                      tileLOD.setFunction( 1, rw.readChildrenTiles.bind( rw, state ) );
                       tileLOD.setRange( 1, rangeMin, Number.MAX_VALUE );
                   }
                 }
                 
-                const bbox = rw._pco.hierarchy[tileLOD.getName()].boundingBox;
+                const bbox = state.pco.hierarchy[tileLOD.getName()].boundingBox;
                 const bboxCenter = vec3.create();
                 bbox.center(bboxCenter);
                 tileLOD.setCenter(bboxCenter);
@@ -399,7 +411,7 @@ ReaderWriterPotree.prototype = {
             } );
         };
 
-        var children = this._pco.hierarchy[ parent.getName() ].children;
+        var children = state.pco.hierarchy[ parent.getName() ].children;
         numChilds = children.length;
         if (numChilds === 0) {
             defer.resolve( group );
@@ -415,34 +427,34 @@ ReaderWriterPotree.prototype = {
         return defer.promise;
     },
 
-    readTileGeometry: function ( bufferArray, name ) {
+    readTileGeometry: function ( bufferArray, name, state ) {
         try {
-            var bbox = this._pco.hierarchy[ name ].boundingBox;
-            this._binaryDecoder.setBuffer( bufferArray );
-            this._binaryDecoder.setLittleEndian( true );
-            var numPoints = bufferArray.byteLength / this._pco.pointAttributes.byteSize;
+            var bbox = state.pco.hierarchy[ name ].boundingBox;
+            state.binaryDecoder.setBuffer( bufferArray );
+            state.binaryDecoder.setLittleEndian( true );
+            var numPoints = bufferArray.byteLength / state.pco.pointAttributes.byteSize;
             notify.log( 'Tile numPoints:' + numPoints );
             var min = bbox.getMin();
-            var verticesUint = new Uint32Array( this._binaryDecoder.decodeUint32Interleaved( numPoints, 0, this._pco.pointAttributes.byteSize, 3 ).buffer );
+            var verticesUint = new Uint32Array( state.binaryDecoder.decodeUint32Interleaved( numPoints, 0, state.pco.pointAttributes.byteSize, 3 ).buffer );
             var vertices = new Float32Array( numPoints * 3 );
             for ( var i = 0; i < numPoints; i++ ) {
                 if (verticesUint[ i * 3 ] === undefined || verticesUint[ i * 3 + 1 ] === undefined || verticesUint[ i * 3 + 2 ] === undefined) {
                     continue;
                 }
-                vertices[ i * 3 ] = verticesUint[ i * 3 ] * this._pco.scale + min[ 0 ];
-                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * this._pco.scale + min[ 1 ];
-                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * this._pco.scale + min[ 2 ];
+                vertices[ i * 3 ] = verticesUint[ i * 3 ] * state.pco.scale + min[ 0 ];
+                vertices[ i * 3 + 1 ] = verticesUint[ i * 3 + 1 ] * state.pco.scale + min[ 1 ];
+                vertices[ i * 3 + 2 ] = verticesUint[ i * 3 + 2 ] * state.pco.scale + min[ 2 ];
             }
 
             var geometry = undefined;
-            if (this._pco.pointAttributes.splat) {
-                var rgbaUint = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 4 ).buffer );
-                var scaleFloat = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 16, this._pco.pointAttributes.byteSize, 3 ).buffer );
-                var rotationUint = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 28, this._pco.pointAttributes.byteSize, 4 ).buffer );
+            if (state.pco.pointAttributes.splat) {
+                var rgbaUint = new Uint8Array( state.binaryDecoder.decodeUint8Interleaved( numPoints, 12, state.pco.pointAttributes.byteSize, 4 ).buffer );
+                var scaleFloat = new Float32Array( state.binaryDecoder.decodeFloat32Interleaved( numPoints, 16, state.pco.pointAttributes.byteSize, 3 ).buffer );
+                var rotationUint = new Uint8Array( state.binaryDecoder.decodeUint8Interleaved( numPoints, 28, state.pco.pointAttributes.byteSize, 4 ).buffer );
                 
-                if (this._splatCallback !== undefined) {
+                if (state.splatCallback !== undefined) {
                     // Call splat callback
-                    geometry = this._splatCallback(numPoints, vertices, rgbaUint, scaleFloat, rotationUint);
+                    geometry = state.splatCallback(numPoints, vertices, rgbaUint, scaleFloat, rotationUint);
                 }
                 else {
                     // Fallback
@@ -461,20 +473,20 @@ ReaderWriterPotree.prototype = {
             else {
                 geometry = new Geometry();
                 geometry.setVertexAttribArray( 'Vertex', new BufferArray( BufferArray.ARRAY_BUFFER, vertices, 3 ) );
-                if (this._pco.pointAttributes.hasFloatValue) {
-                  var floats = new Float32Array( this._binaryDecoder.decodeFloat32Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 1 ).buffer );
+                if (state.pco.pointAttributes.hasFloatValue) {
+                  var floats = new Float32Array( state.binaryDecoder.decodeFloat32Interleaved( numPoints, 12, state.pco.pointAttributes.byteSize, 1 ).buffer );
                   var floatsBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, floats, 1, true );
                   geometry.setVertexAttribArray( 'FloatValue', floatsBuffer );
                   geometry.getPrimitiveSetList().push( new DrawArrays( PrimitiveSet.POINTS, 0, numPoints ) );
                   
                   var floatIterator = floats.values();
                   for (let floatValue of floatIterator) {
-                      this._floatValueMinMax[0] = Math.min(this._floatValueMinMax[0], floatValue);
-                      this._floatValueMinMax[1] = Math.max(this._floatValueMinMax[1], floatValue);
+                      state.floatValueMinMax[0] = Math.min(state.floatValueMinMax[0], floatValue);
+                      state.floatValueMinMax[1] = Math.max(state.floatValueMinMax[1], floatValue);
                   }
                 }
                 else {
-                  var colors = new Uint8Array( this._binaryDecoder.decodeUint8Interleaved( numPoints, 12, this._pco.pointAttributes.byteSize, 3 ).buffer );
+                  var colors = new Uint8Array( state.binaryDecoder.decodeUint8Interleaved( numPoints, 12, state.pco.pointAttributes.byteSize, 3 ).buffer );
                   var colorBuffer = new BufferArray( BufferArray.ARRAY_BUFFER, colors, 3, true );
                   colorBuffer.setNormalize( true );
                   geometry.setVertexAttribArray( 'Color', colorBuffer );
