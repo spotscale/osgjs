@@ -276,6 +276,10 @@ utils.createPrototypeStateAttribute(
             dirty: function() {
                 this._dirty = true;
             },
+            
+            undirty: function() {
+                this._dirty = false;
+            },
 
             isDirty: function() {
                 return this._dirty;
@@ -335,9 +339,17 @@ utils.createPrototypeStateAttribute(
             setColorSpaceConversion: function(enumValue) {
                 this._colorSpaceConversion = enumValue;
             },
+            
+            getColorSpaceConversion: function() {
+                return this._colorSpaceConversion;
+            },
 
             setFlipY: function(bool) {
                 this._flipY = bool;
+            },
+            
+            getFlipY: function() {
+                return this._flipY;
             },
 
             getTextureTarget: function() {
@@ -694,7 +706,7 @@ utils.createPrototypeStateAttribute(
                 // manual mipmap provided
                 var img = this._image;
                 if (img && img.hasMipmap()) {
-                    var internalFormat = this._getInternalFormatGL();
+                    var internalFormat = this.getInternalFormatGL();
                     var mips = img.getMipmap();
                     for (var level = 1, nbLevel = mips.length; level < nbLevel; level++) {
                         var imi = mips[level];
@@ -768,7 +780,7 @@ utils.createPrototypeStateAttribute(
             },
 
             applyImage: function(gl) {
-                var internalFormat = this._getInternalFormatGL();
+                var internalFormat = this.getInternalFormatGL();
                 var image = this._image || null;
                 var data = image && this._image.getImage();
 
@@ -887,7 +899,7 @@ utils.createPrototypeStateAttribute(
                 }
             },
 
-            _getInternalFormatGL: function() {
+            getInternalFormatGL: function() {
                 var internalFormat = this._internalFormat;
 
                 // gl1
