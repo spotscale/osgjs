@@ -174,6 +174,9 @@ utils.createPrototypeObject(
         dirty: function() {
             this._dirty = true;
         },
+        undirty: function() {
+            this._dirty = false;
+        },
         isDirty: function() {
             return this._dirty;
         },
@@ -193,6 +196,9 @@ utils.createPrototypeObject(
         },
         getType: function() {
             return this._type;
+        },
+        getTarget: function() {
+            return this._target;
         }
     }),
     'osg',
