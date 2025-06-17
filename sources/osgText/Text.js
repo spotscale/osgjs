@@ -73,6 +73,9 @@ Text.OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT = 2;
 // Layout enum
 Text.LEFT_TO_RIGHT = 'ltr';
 Text.RIGHT_TO_LEFT = 'rtl';
+// Special case since enum consists of strings:
+Text.ltr = 'ltr';
+Text.rtl = 'rtl';
 
 // Alignment enum
 Text.LEFT_TOP = 0;
