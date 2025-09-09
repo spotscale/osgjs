@@ -217,8 +217,15 @@ ReaderWriterGLTF.prototype = {
         var buffers = this._gltfJSON.buffers;
         for (var i = 0; i < buffers.length; i++) {
             var buffer = buffers[i];
+            var absoluteUri = buffer.uri;
+            if (absoluteUri.indexOf('http') === -1) {
+                var index = this._url.lastIndexOf('/');
+                if (index > -1) {
+                    absoluteUri = this._url.substr(0, index + 1) + absoluteUri;
+                }
+            }
             promises.push(
-                this.loadURI(buffer.uri, { responseType: 'arraybuffer' }).then(function(
+                this.loadURI(absoluteUri, { responseType: 'arraybuffer' }).then(function(
                     arrayBuffer
                 ) {
                     buffer.data = arrayBuffer;
@@ -949,6 +956,8 @@ ReaderWriterGLTF.prototype = {
     }),
 
     readNodeURL: function(url, options) {
+        this._url = url;
+      
         var self = this;
 
         this.init();
