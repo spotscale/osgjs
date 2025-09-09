@@ -709,7 +709,7 @@ ReaderWriterGLTF.prototype = {
 
             if (material.pbrMetallicRoughness) {
                 this._pbrMetallicRoughness(material.pbrMetallicRoughness, stateSet);
-            } else if (material.extensions.KHR_materials_pbrSpecularGlossiness) {
+            } else if (material.extensions && material.extensions.KHR_materials_pbrSpecularGlossiness) {
                 // https://github.com/KhronosGroup/glTF/blob/master/extensions/Khronos/KHR_materials_pbrSpecularGlossiness/README.md
                 this._KHR_materials_pbrSpecularGlossiness(
                     material.extensions.KHR_materials_pbrSpecularGlossiness,
@@ -969,7 +969,12 @@ ReaderWriterGLTF.prototype = {
     },
 
     readJSON: P.method(function(json, url) {
-        this._gltfJSON = json;
+        if (typeof json === 'string') {
+            this._gltfJSON = JSON.parse(json);
+        }
+        else {
+            this._gltfJSON = json;
+        }
 
         return P.all([this.loadBuffers(), this.loadImages()]).then(
             function() {

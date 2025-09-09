@@ -37,6 +37,7 @@ var CompilerVertex = {
 
         this.getNode('InlineCode')
             //.code('%pointSize = min(64.0, max(1.0, -%size / %position.z));')
+            //.code('%pointSize = -%size / %position.z;')
             .code('%pointSize = %size;')
             .inputs({
                 position: this.getOrCreateViewVertex(),
