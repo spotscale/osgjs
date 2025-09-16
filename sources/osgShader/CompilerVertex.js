@@ -36,12 +36,12 @@ var CompilerVertex = {
         }
 
         this.getNode('InlineCode')
-            //.code('%pointSize = min(64.0, max(1.0, -%size / %position.z));')
-            //.code('%pointSize = -%size / %position.z;')
-            .code('%pointSize = %size;')
+            // NOTE: Not sure why the 430 factor is required here
+            .code(this._pointSizeAttribute.isPixelSizeType() ? '%pointSize = %size;' : '%pointSize = max(1.0, (430.0 * %size * %projectionMatrix[1][1]) / -%position.z);')
             .inputs({
                 position: this.getOrCreateViewVertex(),
-                size: this.getOrCreateUniform('float', 'uPointSize')
+                size: this.getOrCreateUniform('float', 'uPointSize'),
+                projectionMatrix: this.getOrCreateProjectionMatrix()
             })
             .outputs({
                 pointSize: glPointSize

@@ -9,6 +9,7 @@ var PointSizeAttribute = function(disable) {
     this._pointSize = 1.0;
     // careful with this option if there is lines/triangles under the stateset
     this._circleShape = false;
+    this._pixelSizeType = true;
     this._dirtyHash = true;
     this._hash = '';
 };
@@ -29,6 +30,15 @@ utils.createPrototypeStateAttribute(
 
         isCircleShape: function() {
             return this._circleShape;
+        },
+        
+        setPixelSizeType: function(pixelSizeType) {
+          this._pixelSizeType = pixelSizeType;
+          this._dirtyHash = true;
+        },
+        
+        isPixelSizeType: function() {
+          return this._pixelSizeType;
         },
 
         setEnabled: function(state) {
@@ -67,7 +77,8 @@ utils.createPrototypeStateAttribute(
             return (
                 this.getTypeMember() +
                 (this.isEnabled() ? '1' : '0') +
-                (this._circleShape ? '1' : '0')
+                (this._circleShape ? '1' : '0') +
+                (this._pixelSizeType ? '1' : '0')
             );
         },
 
@@ -99,6 +110,12 @@ utils.createPrototypeStateAttribute(
                 return -1;
             }
             if (this._circleShape > attr._circleShape) {
+                return 1;
+            }
+            if (this._pixelSizeType < attr._pixelSizeType) {
+                return -1;
+            }
+            if (this._pixelSizeType > attr._pixelSizeType) {
                 return 1;
             }
             return 0;
