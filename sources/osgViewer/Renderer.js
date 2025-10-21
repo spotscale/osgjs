@@ -45,6 +45,7 @@ utils.createPrototypeObject(
             stateSet.setAttributeAndModes(new osg.Depth());
             stateSet.setAttributeAndModes(new osg.BlendFunc());
             stateSet.setAttributeAndModes(new osg.CullFace());
+            stateSet.setAttributeAndModes(new osg.PolygonOffset());
         },
 
         getCullVisitor: function() {

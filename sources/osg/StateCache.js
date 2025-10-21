@@ -2,6 +2,7 @@ import Depth from 'osg/Depth';
 import BlendFunc from 'osg/BlendFunc';
 import BlendEquation from 'osg/BlendEquation';
 import CullFace from 'osg/CullFace';
+import PolygonOffset from 'osg/PolygonOffset';
 
 // To avoid to apply duplicate states we cache them and apply them only
 // when there is a draw commands it means when calling state.drawGeometry
@@ -183,6 +184,21 @@ var createStateClearColor = function() {
     };
 };
 
+var createStatePolygonOffset = function() {
+    return {
+        buffer: {
+          factor: 0.0,
+          units: 0.0
+        },
+        state: {
+          factor: undefined,
+          units: undefined
+        },
+        changed: true
+    };
+};
+
+
 var StateCache = function() {
     this._stateClearColor = createStateClearColor();
     this._stateClearDepth = createStateClearDepth();
@@ -194,6 +210,7 @@ var StateCache = function() {
     this._stateCullFace = createStateCullFace();
     this._stateBlendFunc = createStateBlendFunc();
     this._stateBlendEquation = createStateBlendEquation();
+    this._statePolygonOffset = createStatePolygonOffset();
 };
 
 StateCache.prototype = {
@@ -617,6 +634,56 @@ StateCache.prototype = {
             gl.blendEquation(state.mode);
         }
     },
+
+    applyPolygonOffsetAttribute: function(attribute) {
+        var enable = (attribute._factor !== 0 && attribute._units !== 0);
+        var data = this._statePolygonOffset;
+        var buffer = data.buffer;
+        var state = data.state;
+        data.changed = false;
+
+        buffer.enable = enable;
+        buffer.factor = attribute._factor;
+        buffer.units = attribute._units;
+
+        if (
+            state.factor !== attribute._factor ||
+            state.units !== attribute._units
+        ) {
+            data.changed = true;
+        }
+    },
+
+    applyPolygonOffset: function(gl) {
+        var data = this._statePolygonOffset;
+        var buffer = data.buffer;
+        var state = data.state;
+        data.changed = false;
+
+        if (state.enable !== buffer.enable) {
+            state.enable = buffer.enable;
+            gl.enable(gl.POLYGON_OFFSET_FILL);
+            if (state.enable) {
+                gl.enable(gl.POLYGON_OFFSET_FILL);
+            } else {
+                gl.disable(gl.POLYGON_OFFSET_FILL);
+            }
+        }
+
+        if (!state.enable) return;
+
+        if (
+            state.factor !== buffer.factor ||
+            state.units !== buffer.units
+        ) {
+            state.factor = buffer.factor;
+            state.units = buffer.units;
+            gl.polygonOffset(
+                state.factor,
+                state.units
+            );
+        }
+    },
     
     applyClearStates: function(gl) {
         if (this._stateDepthMask.changed) {
@@ -657,6 +724,9 @@ StateCache.prototype = {
         }
         if (this._stateBlendEquation.changed) {
             this.applyBlendEquation(gl);
+        }
+        if (this._statePolygonOffset.changed) {
+            this.applyPolygonOffset(gl);
         }
         if (this._stateColorMask.changed) {
             this.applyColorMask(gl);

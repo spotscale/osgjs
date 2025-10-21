@@ -159,13 +159,14 @@ utils.createPrototypeNode(
                     case NodeVisitor.TRAVERSE_ACTIVE_CHILDREN:
                         var requiredRange = 0, distance = 0;
 
-                        // Calculate distance from viewpoint
-                        var matrix = visitor.getCurrentModelViewMatrix();
-                        mat4.invert(viewModel, matrix);
-                        vec3.transformMat4(eye, zeroVector, viewModel);
-                        distance = vec3.distance(this.getBound().center(), eye);
-                        
                         if (this._rangeMode === Lod.DISTANCE_FROM_EYE_POINT) {
+                            // Calculate distance from viewpoint
+                            // SPOTSCALE: Only need for this with distance from eye point now
+                            var matrix = visitor.getCurrentModelViewMatrix();
+                            mat4.invert(viewModel, matrix);
+                            vec3.transformMat4(eye, zeroVector, viewModel);
+                            distance = vec3.distance(this.getBound().center(), eye);
+
                             requiredRange = distance * visitor.getLODScale();
                         } else {
                             // SPOTSCALE: To avoid distorted bounding spheres near edges of screen resulting in

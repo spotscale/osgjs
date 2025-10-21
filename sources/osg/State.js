@@ -187,6 +187,10 @@ utils.createPrototypeObject(
             this._stateCache.applyScissorAttribute(attribute);
         },
 
+        applyPolygonOffset: function(attribute) {
+            this._stateCache.applyPolygonOffsetAttribute(attribute);
+        },
+
         viewport: function(x, y, width, height) {
             this._stateCache.viewport(x, y, width, height);
         },
