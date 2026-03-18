@@ -94,23 +94,25 @@ var gruntTasks = {};
 // Build OSGJS with webpack
 //
 (function() {
-    var webpack = require('webpack');
+    var TerserPlugin = require('terser-webpack-plugin');
 
     var release = {
-        devtool: 'none',
+        devtool: false,
         output: { filename: '[name].min.js' },
 
         module: {
-            loaders: webpackSources.module.loaders.concat({
+            rules: webpackSources.module.rules.concat({
                 test: /\.js$/,
                 loader: 'webpack-strip-block'
             })
         },
 
+        optimization: {
+            minimizer: [new TerserPlugin({ extractComments: false })]
+        },
+
         // additional plugins for this specific mode
-        plugins: webpackSources.plugins.concat(
-            new webpack.optimize.UglifyJsPlugin({ sourceMap: false })
-        )
+        plugins: webpackSources.plugins.slice()
     };
 
     var watch = {
@@ -405,8 +407,6 @@ module.exports = function(grunt) {
 
     grunt.loadNpmTasks('grunt-documentation');
 
-    grunt.loadNpmTasks('grunt-plato');
-
     grunt.loadNpmTasks('grunt-release');
     grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.loadNpmTasks('grunt-update-submodules');
@@ -438,7 +438,7 @@ module.exports = function(grunt) {
     grunt.registerTask('build', ['webpack:sources', 'webpack:tests']);
     grunt.registerTask('build-release', ['webpack:release', 'copy:bundles']);
 
-    grunt.registerTask('docs', ['plato', 'documentation:default']);
+    grunt.registerTask('docs', ['documentation:default']);
     grunt.registerTask('default', ['check', 'build']);
     grunt.registerTask('serve', ['sync', 'build', 'connect:dist:keepalive']);
 };

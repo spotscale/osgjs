@@ -4,7 +4,6 @@ import WebGLCaps from 'osg/WebGLCaps';
 import DrawArrays from 'osg/DrawArrays';
 import utils from 'osg/utils';
 import notify from 'osg/notify';
-import WebGLCaps from 'osg/WebGLCaps';
 
 /**
  * DrawArrays manage rendering of indexed primitives

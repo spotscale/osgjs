@@ -2,15 +2,8 @@
     "root": true,
     "plugins": ["prettier"],
     "parserOptions": {
-        "ecmaVersion": 5,
-        "sourceType": "module",
-        "ecmaFeatures": {
-            "classes": false,
-            "jsx": false,
-            "modules": true,
-            "objectLiteralShorthandMethods": false,
-            "destructuring": false
-        }
+        "ecmaVersion": 2015,
+        "sourceType": "module"
     },
     "env": {
         "browser": true,

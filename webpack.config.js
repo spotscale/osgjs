@@ -71,10 +71,10 @@ var mainlibConfig = {
     externals: externals,
     resolve: resolve,
     module: {
-        loaders: [
+        rules: [
             {
                 test: /\.(frag|vert|glsl)$/,
-                loader: 'raw-loader'
+                type: 'asset/source'
             }
         ]
     },
@@ -97,18 +97,20 @@ var testconfig = {
         libraryTarget: 'umd',
         library: 'OSG'
     },
-    node: {
-        fs: 'empty'
+    resolve: {
+        ...resolve,
+        fallback: {
+            fs: false
+        }
     },
     target: 'node',
     externals: externals,
-    resolve: resolve,
     module: {
-        loaders: [
+        rules: [
             {
                 // shaders
                 test: /\.(frag|vert|glsl)$/,
-                loader: 'raw-loader'
+                type: 'asset/source'
             }
         ]
     },

@@ -4,7 +4,6 @@ import WebGLCaps from 'osg/WebGLCaps';
 import DrawElements from 'osg/DrawElements';
 import utils from 'osg/utils';
 import notify from 'osg/notify';
-import WebGLCaps from 'osg/WebGLCaps';
 
 /**
  * DrawElementsInstanced manages rendering of instanced indexed primitives
